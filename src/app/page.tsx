@@ -1,4 +1,3 @@
-import React from 'react'
 import Navbar from '@/components/Navbar'
 import LandingPage from '@/components/LandingPage'
 const page = () => {
@@ -12,6 +11,5 @@ const page = () => {
      </div>
     </>
   )
-}
-
-export default page
+}; 
+export default page; 
