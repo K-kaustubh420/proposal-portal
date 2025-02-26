@@ -40,8 +40,9 @@ const lineData = {
 
 export default function EventPortal() {
     return (
-        <div className="p-4 space-y-6 max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-left mb-8">Event Proposal Dashboard</h1>
+        <div style={{ backgroundImage: "url('/tp.jpg')" }}>
+        <div className="p-4 card bg-slate-500 bg-opacity-90 space-y-6 max-w-6xl mx-auto">
+            <h1 className="text-4xl text-gray-950 font-bold text-left mb-8">Event Proposal Dashboard</h1>
             
             {/* Proposal Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -127,6 +128,7 @@ export default function EventPortal() {
                     }} />
                 </div>
             </div>
+        </div>
         </div>
     );
 }

@@ -1,6 +1,6 @@
 export default function EventProposalForm() {
   return (
-    <div className="bg-blue-300">
+    <div className="card bg-opacity-30"  style={{ backgroundImage: "url('/tp.jpg')" }}>
     <div className="p-6 card bg-white max-w-4xl mx-auto">
       <h2 className="text-2xl text-blue-600 font-bold mb-4">Submit Proposal</h2>
       
