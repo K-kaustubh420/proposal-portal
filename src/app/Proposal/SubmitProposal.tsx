@@ -2,7 +2,7 @@ export default function EventProposalForm() {
   return (
     <div className="bg-blue-300">
     <div className="p-6 card bg-white max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Submit Proposal</h2>
+      <h2 className="text-2xl text-blue-600 font-bold mb-4">Submit Proposal</h2>
       
       <label className="block mb-2">Organizing Department:</label>
       <input type="text" placeholder="Organizing Department" className="input bg-transparent input-info w-full mb-4" />
