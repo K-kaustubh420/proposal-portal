@@ -4,7 +4,7 @@ const page = () => {
   return (
     <>
     <div>
-      this will be default
+      this will be default page
     </div></>
   )
 }
