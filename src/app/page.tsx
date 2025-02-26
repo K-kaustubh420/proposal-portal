@@ -1,11 +1,16 @@
 import React from 'react'
-
+import Navbar from '@/components/Navbar'
+import LandingPage from '@/components/LandingPage'
 const page = () => {
   return (
     <>
-    <div>
-      this will be default page
-    </div></>
+    <nav>
+    <Navbar />
+    </nav>
+     <div>
+    <LandingPage /> 
+     </div>
+    </>
   )
 }
 
