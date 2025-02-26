@@ -6,14 +6,13 @@ import { RxCross2 } from "react-icons/rx";
 const LoginPage = () => {
   return (
     <div className="h-screen w-screen flex flex-col">
-      {/* Navbar */}
       <nav className="bg-blue-800 text-white flex items-center p-3">
         <img src="/Srmlogo.jpg" alt="SRM Logo" className="w-12 h-12 rounded-full mr-4" />
         <h1 className="text-xl font-semibold">SRM Event Connect</h1>
       </nav>
 
       <div className="flex flex-grow flex-col md:flex-row">
-        {/* Left Section */}
+ 
         <div
           className="hidden md:flex md:w-2/3 bg-cover bg-center relative"
           style={{ backgroundImage: "url('/tp.jpg')" }}
