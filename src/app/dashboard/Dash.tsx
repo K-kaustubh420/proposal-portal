@@ -1,46 +1,12 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect and useState
 import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, ArcElement, Filler } from 'chart.js';
 import { ListChecks, ThumbsUp, Clock, Calendar, Layers, Flag, TrendingUp, FileText, UserRound, XCircle, CheckCircle, ArrowUpRight, Info } from 'lucide-react';
+import { db } from '@/firebase/config'; // Import Firebase config
+import { collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, ArcElement, Filler);
-
-// Enhanced Demo Data - Event Proposals (Data remains same)
-const eventProposals = [
-    { id: 1, title: 'Coding Workshop for Beginners', organizer: 'ACM Club', date: '2024-03-10', status: 'Approved', category: 'Technical', cost: 1200, email: 'acm@example.org' },
-    { id: 2, title: 'Spring Dance Fest', organizer: 'Music and Dance Club', date: '2024-04-15', status: 'Approved', category: 'Cultural', cost: 1500, email: 'danceclub@example.org' },
-    { id: 3, title: 'Astro Photography Night', organizer: 'Astrophilia Society', date: '2024-05-20', status: 'Approved', category: 'Academic', cost: 900, email: 'astro.society@example.org' },
-    { id: 4, title: 'Web Design Seminar', organizer: 'Cherry Network', date: '2024-06-05', status: 'Approved', category: 'Technical', cost: 1100, email: 'cherry.network@example.org' },
-    { id: 5, title: 'Cricket Tournament', organizer: 'Sports Club', date: '2024-07-01', status: 'Approved', category: 'Sports', cost: 2000, email: 'sports.club@example.org' },
-    { id: 6, title: 'Literary Arts Workshop', organizer: 'Milan - Literary Club', date: '2024-08-12', status: 'Pending', category: 'Cultural', cost: 700, email: 'milan.club@example.org' },
-    { id: 7, title: 'Robotics Challenge', organizer: 'Lift-off Club', date: '2024-09-25', status: 'Approved', category: 'Technical', cost: 1800, email: 'liftoff.club.org' },
-    { id: 8, title: 'Business Plan Competition', organizer: 'ECell', date: '2024-10-18', status: 'Rejected', category: 'Academic', cost: 2500, email: 'ecell@example.org' },
-    { id: 9, title: 'Photography Exhibition', organizer: 'Aarush - Photography Club', date: '2024-11-07', status: 'Pending', category: 'Cultural', cost: 650, email: 'aarush.photo@example.org' },
-    { id: 10, title: 'Advanced ML Conference', organizer: 'Tech Society', date: '2024-12-02', status: 'Approved', category: 'Technical', cost: 2300, email: 'tech.society@example.org' },
-    { id: 11, title: 'Debate Championship', organizer: 'Debate Club', date: '2025-01-15', status: 'Approved', category: 'Academic', cost: 1100, email: 'debate.society@example.org' },
-    { id: 12, title: 'Gaming Tournament', organizer: 'Gaming Guild', date: '2025-02-28', status: 'Pending', category: 'Sports', cost: 1600, email: 'gaming.guild@example.org' },
-    { id: 13, title: 'Music Mania Concert', organizer: 'Music Club', date: '2025-03-15', status: 'Approved', category: 'Cultural', cost: 2200, email: 'music.club@example.org' },
-    { id: 14, title: 'Advanced Robotics Workshop', organizer: 'Lift-off Club', date: '2025-04-22', status: 'Pending', category: 'Technical', cost: 1400, email: 'liftoff.club.adv@example.org' },
-];
-
-const approvedProposals = eventProposals.filter(p => p.status === 'Approved').length;
-const pendingProposals = eventProposals.filter(p => p.status === 'Pending').length;
-const rejectedProposals = eventProposals.filter(p => p.status === 'Rejected').length;
-const totalProposals = eventProposals.length;
-const totalCost = eventProposals.reduce((sum, p) => sum + p.cost, 0);
-
-const pieData = {
-    labels: ['Approved', 'Pending', 'Rejected'],
-    datasets: [{
-        label: 'Proposal Status',
-        data: [approvedProposals, pendingProposals, rejectedProposals],
-        backgroundColor: ['#A78BFA', '#F9A8D4', '#EF4444'],
-        borderWidth: 0,
-        hoverOffset: 5
-    }],
-};
-
 
 const lineOptions = {
     responsive: true,
@@ -140,10 +106,87 @@ const lineData = {
 };
 
 
+const pieDataOptions = { // Separate options for Pie Chart for better readability
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { position: 'bottom', labels: { color: '#fff' } },
+        tooltip: {
+            backgroundColor: '#2D3748',
+            bodyColor: '#fff',
+            titleColor: '#fff',
+            borderColor: '#6B7280',
+            borderWidth: 1,
+            callbacks: {
+                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+            },
+        },
+    },
+    chartArea: { backgroundColor: '#1E293B' }
+};
+
+
 export default function EventPortal() {
-    // Get Recent Proposals (Recent proposals data remains same)
+    const [eventProposals, setEventProposals] = useState([]); // State to store fetched proposals
+    const [loading, setLoading] = useState(true); // Loading state
+
+    useEffect(() => {
+        const fetchProposals = async () => {
+            setLoading(true); // Set loading to true before fetching
+            try {
+                const proposalsCollection = collection(db, 'eventProposals'); // Replace 'eventProposals' with your collection name
+                const proposalSnapshot = await getDocs(proposalsCollection);
+                const proposalsList = proposalSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id, // Include document ID if needed
+                        title: data.eventTitle, // Map Firestore fields to component props
+                        organizer: data.organizingDepartment,
+                        date: data.eventDate,
+                        status: data.proposalStatus || 'Pending', // Default status if not in Firestore
+                        category: data.category,
+                        cost: data.estimatedBudget,
+                        email: data.convenerEmail,
+                        ...data, // Include all other fields if needed
+                    };
+                });
+                setEventProposals(proposalsList);
+                setLoading(false); // Set loading to false after fetching
+            } catch (error) {
+                console.error("Error fetching proposals:", error);
+                setLoading(false); // Set loading to false even on error
+                // Optionally display an error message to the user
+            }
+        };
+
+        fetchProposals();
+    }, []); // Empty dependency array to run only once on component mount
+
+    // Data processing logic - now using fetched eventProposals state
+    const approvedProposalsCount = eventProposals.filter(p => p.status === 'Approved').length;
+    const pendingProposalsCount = eventProposals.filter(p => p.status === 'Pending').length;
+    const rejectedProposalsCount = eventProposals.filter(p => p.status === 'Rejected').length;
+    const totalProposalsCount = eventProposals.length;
+    const totalCost = eventProposals.reduce((sum, p) => sum + (p.cost || 0), 0); // Handle potential undefined cost
+
+    const pieData = {
+        labels: ['Approved', 'Pending', 'Rejected'],
+        datasets: [{
+            label: 'Proposal Status',
+            data: [approvedProposalsCount, pendingProposalsCount, rejectedProposalsCount],
+            backgroundColor: ['#A78BFA', '#F9A8D4', '#EF4444'],
+            borderWidth: 0,
+            hoverOffset: 5
+        }],
+    };
+
     const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice(-3).reverse();
+
+
+    if (loading) {
+        return <div className="bg-slate-200 min-h-screen font-sans text-black flex justify-center items-center">Loading proposals...</div>; // Or a more sophisticated loader
+    }
 
 
     return (
@@ -170,7 +213,7 @@ export default function EventPortal() {
                     <div className="card shadow-md rounded-lg border-t-4 border-blue-500 bg-slate-200">
                         <div className="card-body flex flex-col items-start">
                             <ListChecks className="h-6 w-6 text-blue-500 mb-2" />
-                            <div className="text-xl font-bold text-gray-700">{totalProposals.toLocaleString()}</div>
+                            <div className="text-xl font-bold text-gray-700">{totalProposalsCount.toLocaleString()}</div>
                             <div className="text-sm text-gray-400">Total Applied</div>
                         </div>
                     </div>
@@ -178,7 +221,7 @@ export default function EventPortal() {
                     <div className="card shadow-md rounded-lg border-t-4 border-green-500 bg-slate-200">
                         <div className="card-body flex flex-col items-start">
                             <CheckCircle className="h-6 w-6 text-green-500 mb-2" />
-                            <div className="text-xl font-bold text-gray-700">{approvedProposals.toLocaleString()}</div>
+                            <div className="text-xl font-bold text-gray-700">{approvedProposalsCount.toLocaleString()}</div>
                             <div className="text-sm text-gray-400">Approved</div>
                         </div>
                     </div>
@@ -186,7 +229,7 @@ export default function EventPortal() {
                     <div className="card shadow-md rounded-lg border-t-4 border-red-500 bg-slate-200">
                         <div className="card-body flex flex-col items-start">
                             <XCircle className="h-6 w-6 text-red-500 mb-2" />
-                            <div className="text-xl font-bold text-gray-700">{rejectedProposals.toLocaleString()}</div>
+                            <div className="text-xl font-bold text-gray-700">{rejectedProposalsCount.toLocaleString()}</div>
                             <div className="text-sm text-gray-400">Rejected</div>
                         </div>
                     </div>
@@ -195,7 +238,7 @@ export default function EventPortal() {
                     <div className="card shadow-md rounded-lg border-t-4 border-yellow-500 bg-slate-200">
                         <div className="card-body flex flex-col items-start">
                             <Clock className="h-6 w-6 text-yellow-500 mb-2" />
-                            <div className="text-xl font-bold text-gray-700">{pendingProposals.toLocaleString()}</div>
+                            <div className="text-xl font-bold text-gray-700">{pendingProposalsCount.toLocaleString()}</div>
                             <div className="text-sm text-gray-400">Pending</div>
                         </div>
                     </div>
@@ -209,12 +252,12 @@ export default function EventPortal() {
                         <div className="max-w-full w-full rounded-lg shadow-md  p-5 md:p-7 bg-slate-200">
                             <div className="flex justify-between mb-4">
                                 <div>
-                                    <h5 className="leading-none text-3xl font-bold text-gray-700 pb-2">{totalProposals.toLocaleString()}</h5>
+                                    <h5 className="leading-none text-3xl font-bold text-gray-700 pb-2">{totalProposalsCount.toLocaleString()}</h5>
                                     <p className="text-base font-normal text-gray-700">Proposals this year</p>
                                 </div>
                                 <div
                                     className="flex items-center px-2.5 py-0.5 text-base font-semibold text-green-800 dark:text-green-500 text-center">
-                                    +{(approvedProposals/totalProposals*100).toFixed(1)}%
+                                    +{(approvedProposalsCount/totalProposalsCount*100).toFixed(1)}%
                                     <ArrowUpRight className="w-3 h-3 ms-1" aria-hidden="true" color="white" />
                                 </div>
                             </div>
@@ -368,23 +411,3 @@ export default function EventPortal() {
         </>
     );
 }
-
-
-const pieDataOptions = { // Separate options for Pie Chart for better readability
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: { position: 'bottom', labels: { color: '#fff' } },
-        tooltip: {
-            backgroundColor: '#2D3748',
-            bodyColor: '#fff',
-            titleColor: '#fff',
-            borderColor: '#6B7280',
-            borderWidth: 1,
-            callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
-            },
-        },
-    },
-    chartArea: { backgroundColor: '#1E293B' }
-};
