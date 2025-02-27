@@ -1,9 +1,16 @@
+"use client"
 import React from 'react'
-import SubmitProposal from './SubmitProposal'
+import EventProposalForm from './SubmitProposal'
+import Navbar from '@/components/Navbar'
 const page = () => {
   return (
     <>
-      <SubmitProposal/>
+    <nav> 
+      <Navbar />
+    </nav>
+    <div>
+      <EventProposalForm />
+      </div> 
     </>
   )
 }

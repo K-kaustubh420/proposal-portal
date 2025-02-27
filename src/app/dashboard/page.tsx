@@ -1,9 +1,15 @@
 import React from 'react'
 import Dash from './Dash'
+import Navbar from '@/components/Navbar'
 const page = () => {
   return (
     <>
-      <Dash/>
+     <nav>
+      <Navbar />
+      </nav>  
+      <div> <Dash/>
+      </div>
+     
     </>
   )
 }
