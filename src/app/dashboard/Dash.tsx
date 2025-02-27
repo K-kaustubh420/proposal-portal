@@ -219,7 +219,6 @@ export default function EventPortal() {
         }
     }, [isUpdatingStatus]);
 
-
     if (loading) {
         return <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">Loading proposals...</div>;
     }
@@ -327,8 +326,6 @@ export default function EventPortal() {
                                     </div>
                                 </div>
                             </div>
-
-
                         </div>
 
                         <div className="lg:col-span-1 space-y-8">
@@ -458,27 +455,31 @@ export default function EventPortal() {
                         </div>
 
                         <div className="mt-6 flex justify-end space-x-2">
-                            <button
-                                onClick={() => updateProposalStatus(selectedProposal.id, 'Rejected')}
-                                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                                type="button"
-                                disabled={isUpdatingStatus}
-                            >
-                                Reject
-                            </button>
-                            <button
-                                onClick={() => updateProposalStatus(selectedProposal.id, 'Approved')}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                                type="button"
-                                disabled={isUpdatingStatus}
-                            >
-                                Approve
-                            </button>
+                            {selectedProposal.status !== 'Approved' && (
+                                <>
+                                    <button
+                                        onClick={() => updateProposalStatus(selectedProposal.id, 'Rejected')}
+                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                                        type="button"
+                                        disabled={isUpdatingStatus}
+                                    >
+                                        Reject
+                                    </button>
+                                    <button
+                                        onClick={() => updateProposalStatus(selectedProposal.id, 'Approved')}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                                        type="button"
+                                        disabled={isUpdatingStatus}
+                                    >
+                                        Approve
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
-                
+
             )}
-       </div> </>
+        </div> </>
     );
 }
