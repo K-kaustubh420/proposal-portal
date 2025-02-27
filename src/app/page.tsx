@@ -1,12 +1,14 @@
 import React from 'react'
 import Navbar from '@/components/Navbar'
-import Dashboard from './dashboard/page'
-
+import LandingPage from '@/components/LandingPage'
 const page = () => {
   return (
     <>
+    <nav> 
+      <Navbar /> 
+    </nav>
     <div>
-      <Dashboard/>
+     <LandingPage  /> 
     </div></>
   )
 }
