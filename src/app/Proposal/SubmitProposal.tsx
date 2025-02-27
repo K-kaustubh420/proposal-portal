@@ -135,7 +135,8 @@ export default function EventProposalForm() {
 
   return (
     <>
-      <div className="bg-blue-50 min-h-screen flex justify-center items-center py-10">
+    <div style={{ backgroundImage: "url('/tp.jpg')" }}>
+      <div className="bg-blue-50 bg-opacity-90 min-h-screen flex justify-center items-center py-10">
         <div className="card bg-white shadow-xl rounded-2xl max-w-3xl w-full mx-4 md:mx-0">
           <div className="card-body p-8">
             <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Submit Event Proposal</h2>
@@ -443,6 +444,7 @@ export default function EventProposalForm() {
             </form>
           </div>
         </div>
+      </div>
       </div>
     </>
   );

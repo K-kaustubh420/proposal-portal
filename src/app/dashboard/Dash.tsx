@@ -225,8 +225,8 @@ export default function EventPortal() {
     }
 
     return (
-        <>
-            <div className={`bg-gray-100 min-h-screen font-sans text-gray-900 ${selectedProposal ? 'blur-sm' : ''}`}>
+        <><div style={{ backgroundImage: "url('/tp.jpg')" }}>
+            <div className={`bg-gray-100 bg-opacity-90 min-h-screen font-sans text-gray-900 ${selectedProposal ? 'blur-sm' : ''}`}>
                 <div className="p-6 max-w-7xl mx-auto space-y-8">
                     <div className="flex justify-between items-center">
                         <div>
@@ -477,7 +477,8 @@ export default function EventPortal() {
                         </div>
                     </div>
                 </div>
+                
             )}
-        </>
+       </div> </>
     );
 }
