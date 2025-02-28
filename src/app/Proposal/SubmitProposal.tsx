@@ -12,6 +12,7 @@ export default function EventProposalForm() {
   // Form field states
   const [organizingDepartment, setOrganizingDepartment] = useState('');
   const [eventTitle, setEventTitle] = useState('');
+  const [eventDescription, setEventDescription] = useState('');
   const [durationEvent, setDurationEvent] = useState('');
   const [category, setCategory] = useState('');
   const [designation, setDesignation] = useState('');
@@ -19,6 +20,8 @@ export default function EventProposalForm() {
   const [sponsorshipDetails, setSponsorshipDetails] = useState('');
   const [pastEvents, setPastEvents] = useState('');
   const [relevantDetails, setRelevantDetails] = useState('');
+  const [chiefGuestName, setChiefGuestName] = useState('');
+  const [chiefGuestDesignation, setChiefGuestDesignation] = useState('');
   const [convenerName, setConvenerName] = useState('');
   const [convenerEmail, setConvenerEmail] = useState('');
   const [fundUniversity, setFundUniversity] = useState('');
@@ -50,12 +53,23 @@ export default function EventProposalForm() {
 
   // Function to handle changes in Detailed Budget Rows
   const handleDetailedBudgetChange = (id, field, value) => {
-    const updatedRows = detailedBudgetRows.map(row =>
-      row.id === id ? { ...row, [field]: value } : row
-    );
+    const updatedRows = detailedBudgetRows.map(row => {
+      if (row.id === id) {
+        const updatedRow = { ...row, [field]: value };
+  
+        // Convert to numbers and calculate total
+        const quantity = parseFloat(updatedRow.quantity) || 0;
+        const costPerUnit = parseFloat(updatedRow.costPerUnit) || 0;
+        updatedRow.totalAmount = quantity * costPerUnit;
+  
+        return updatedRow;
+      }
+      return row;
+    });
+  
     setDetailedBudgetRows(updatedRows);
   };
-
+  
   // Function to add a new row to Sponsorship Details
   const addSponsorshipRow = () => {
     setSponsorshipRows([...sponsorshipRows, { id: sponsorshipRows.length + 1, sponsorshipType: '', associatingAgencies: '' }]);
@@ -73,16 +87,25 @@ export default function EventProposalForm() {
     );
     setSponsorshipRows(updatedRows);
   };
-
-  // Function to handle form submission
+// function for form submission
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
-
+  
+    // Calculate total detailed budget
+    const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
+  
+    // Check if estimated budget matches
+    if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
+      alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
+      return; // Stop form submission
+    }
+  
     try {
-      const eventProposalsCollection = collection(db, 'eventProposals'); // 'eventProposals' is the name of your collection in Firestore
+      const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
       await addDoc(eventProposalsCollection, {
         organizingDepartment,
         eventTitle,
+        eventDescription, // Include event description
         durationEvent,
         eventDate: startDate.toISOString(), // Store date as ISO string
         category,
@@ -91,6 +114,8 @@ export default function EventProposalForm() {
         sponsorshipDetails,
         pastEvents,
         relevantDetails,
+        chiefGuestName,
+        chiefGuestDesignation,
         convenerName,
         convenerEmail,
         fundingDetails: {
@@ -103,11 +128,13 @@ export default function EventProposalForm() {
         sponsorshipDetailsRows: sponsorshipRows,
         submissionTimestamp: new Date().toISOString(), // Add timestamp
       });
-
+  
       alert('Event proposal submitted successfully!');
-      // Reset form fields here if needed
+      
+      // Reset form fields
       setOrganizingDepartment('');
       setEventTitle('');
+      setEventDescription('');
       setDurationEvent('');
       setStartDate(new Date());
       setCategory('');
@@ -116,28 +143,40 @@ export default function EventProposalForm() {
       setSponsorshipDetails('');
       setPastEvents('');
       setRelevantDetails('');
+      setChiefGuestName('');
+      setChiefGuestDesignation('');
       setConvenerName('');
       setConvenerEmail('');
       setFundUniversity('');
       setFundRegistration('');
       setFundSponsorship('');
       setFundOther('');
-      setDetailedBudgetRows([{ id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' }, { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' }, { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }]);
+      setDetailedBudgetRows([
+        { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+        { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+        { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
+      ]);
       setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
-
-
+  
     } catch (error) {
       console.error('Error submitting proposal:', error);
       alert('Failed to submit proposal. Please try again.');
     }
   };
+  
 
 
   return (
     <>
-    <div style={{ backgroundImage: "url('/tp.jpg')" }}>
-      <div className="bg-blue-50 bg-opacity-90 min-h-screen flex justify-center items-center py-10">
-        <div className="card bg-white shadow-xl rounded-2xl max-w-3xl w-full mx-4 md:mx-0">
+    <div style={{
+          backgroundImage: "url('/SRMIST-BANNER.jpg')",
+          backgroundSize: "cover", // Stretches to fill
+          backgroundAttachment: "fixed",
+          backgroundPosition: "center",
+
+        }}>
+      <div className="bg-blue-50 bg-opacity-70 min-h-screen flex justify-center items-center py-10">
+        <div className="card bg-white shadow-xl rounded-2xl max-w-7xl w-full mx-4 md:mx-0">
           <div className="card-body p-8">
             <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Submit Event Proposal</h2>
 
@@ -171,6 +210,20 @@ export default function EventProposalForm() {
                   required
                 />
               </div>
+              <div>
+  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="event-description">
+    Event Description
+  </label>
+  <textarea
+    id="event-description"
+    placeholder="Enter Event Description"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={eventDescription}
+    onChange={(e) => setEventDescription(e.target.value)}
+    required
+  />
+</div>
+
 
               <div>
                 <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="duration-event">
@@ -292,6 +345,36 @@ export default function EventProposalForm() {
                   onChange={(e) => setRelevantDetails(e.target.value)}
                 ></textarea>
               </div>
+              <div>
+  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-name">
+    Chief Guest / Celebrity Name
+  </label>
+  <input
+    type="text"
+    id="chief-guest-name"
+    placeholder="Enter Name"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={chiefGuestName}
+    onChange={(e) => setChiefGuestName(e.target.value)}
+    required
+  />
+</div>
+
+<div>
+  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
+    Chief Guest / Celebrity Designation
+  </label>
+  <input
+    type="text"
+    id="chief-guest-designation"
+    placeholder="Enter Designation"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={chiefGuestDesignation}
+    onChange={(e) => setChiefGuestDesignation(e.target.value)}
+    required
+  />
+</div>
+
 
               <div>
                 <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="convener-name">
@@ -369,7 +452,7 @@ export default function EventProposalForm() {
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Detailed Budget</h3>
                 <div className="overflow-x-auto">
                   <table className="table-auto w-full shadow-md rounded-md">
-                    <thead className="bg-gray-100">
+                    <thead className="bg-blue-50">
                       <tr className="text-left">
                         <th className="px-4 py-2">S.No</th>
                         <th className="px-4 py-2">Description</th>
@@ -382,11 +465,136 @@ export default function EventProposalForm() {
                     <tbody>
                       {detailedBudgetRows.map((row) => (
                         <tr key={row.id} className="border-b border-gray-200">
-                          <td className="px-4 py-2">{row.id}</td>
-                          <td className="px-4 py-2"><input type="text" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.description} onChange={(e) => handleDetailedBudgetChange(row.id, 'description', e.target.value)} /></td>
+                          <td className="px-4 py-1">{row.id}</td>
+                          <td className="px-3 py-2">
+  <div className="flex items-center justify-between p-3 rounded-lg w-full">
+
+    {/* Main Category Dropdown (Left) */}
+    <div className="w-1/3 pr-2">
+      <select
+        className="select select-bordered w-full text-gray-700 font-medium bg-gray-100 hover:bg-white transition focus:ring-2 focus:ring-blue-500"
+        value={row.mainCategory || ""}
+        onChange={(e) => handleDetailedBudgetChange(row.id, 'mainCategory', e.target.value)}
+      >
+        <option value="" disabled hidden>Main Category</option>
+        <option value="Budgetary Expenditures">Budgetary Expenditures</option>
+        <option value="Publicity">Publicity</option>
+        <option value="General">General</option>
+        <option value="Honorarium">Honorarium</option>
+        <option value="Hospitality">Hospitality</option>
+        <option value="Inaugural and Valedictory">Inaugural and Valedictory</option>
+        <option value="Resource Materials">Resource Materials</option>
+        <option value="Conference Paper Publication">Conference Paper Publication</option>
+      </select>
+    </div>
+
+    {/* Subcategory Dropdown (Middle) */}
+    <div className="w-1/3 px-2">
+      <select
+        className="select select-bordered w-full text-gray-700 font-medium bg-gray-100 hover:bg-white transition focus:ring-2 focus:ring-blue-500"
+        value={row.subCategory || ""}
+        onChange={(e) => handleDetailedBudgetChange(row.id, 'subCategory', e.target.value)}
+      >
+        <option value="" disabled hidden>Subcategory</option>
+
+        {row.mainCategory === "Budgetary Expenditures" && (
+          <>
+            <option value="Number of Sessions Planned">Number of Sessions Planned</option>
+            <option value="Number of Keynote Speakers">Number of Keynote Speakers</option>
+            <option value="Number of Session Judges">Number of Session Judges</option>
+            <option value="Number of Celebrities / Chief Guests">Number of Celebrities / Chief Guests</option>
+          </>
+        )}
+        {row.mainCategory === "Publicity" && (
+          <>
+            <option value="Invitation">Invitation</option>
+            <option value="Press Coverage">Press Coverage</option>
+          </>
+        )}
+        {row.mainCategory === "General" && (
+          <>
+            <option value="Conference Kits">Conference Kits</option>
+            <option value="Printing and Stationery">Printing and Stationery</option>
+            <option value="Secretarial Expenses">Secretarial Expenses</option>
+            <option value="Mementos">Mementos</option>
+          </>
+        )}
+        {row.mainCategory === "Honorarium" && (
+          <>
+            <option value="Keynote Speakers">Keynote Speakers</option>
+            <option value="Session Judges">Session Judges</option>
+            <option value="Chief Guests">Chief Guests</option>
+          </>
+        )}
+        {row.mainCategory === "Hospitality" && (
+          <>
+            <option value="Train / Flight for Chief Guest / Keynote Speakers">Train / Flight for Chief Guest / Keynote Speakers</option>
+            <option value="Accommodation for Chief Guest / Keynote Speakers">Accommodation for Chief Guest / Keynote Speakers</option>
+            <option value="Food and Beverages for Chief Guest / Keynote Speakers">Food and Beverages for Chief Guest / Keynote Speakers</option>
+            <option value="Local Travel Expenses">Local Travel Expenses</option>
+            <option value="Food for Participants">Food for Participants</option>
+            <option value="Food & Snacks for Volunteers / Organizers">Food & Snacks for Volunteers / Organizers</option>
+            <option value="Hostel Accommodation">Hostel Accommodation</option>
+          </>
+        )}
+        {row.mainCategory === "Inaugural and Valedictory" && (
+          <>
+            <option value="Banners, Pandal etc">Banners, Pandal etc</option>
+            <option value="Lighting and Decoration">Lighting and Decoration</option>
+            <option value="Flower Bouquet">Flower Bouquet</option>
+            <option value="Cultural Events">Cultural Events</option>
+            <option value="Field Visits / Sightseeing">Field Visits / Sightseeing</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+          </>
+        )}
+        {row.mainCategory === "Resource Materials" && (
+          <>
+            <option value="Preparation, Printing, Binding">Preparation, Printing, Binding</option>
+          </>
+        )}
+        {row.mainCategory === "Conference Paper Publication" && (
+          <>
+            <option value="Extended Abstract">Extended Abstract</option>
+            <option value="Full Paper">Full Paper</option>
+          </>
+        )}
+      </select>
+    </div>
+
+    {/* Domestic / International Radio Buttons (Right) */}
+    <div className="w-1/3 pl-2 gap-4">
+      <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
+        <input
+          type="radio"
+          name={`location-${row.id}`}
+          value="Domestic"
+          className="radio radio-primary"
+          checked={row.locationType === "Domestic"}
+          onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+        />
+        <span className="text-sm">Domestic</span>
+      </label>
+      <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
+        <input
+          type="radio"
+          name={`location-${row.id}`}
+          value="International"
+          className="radio radio-primary"
+          checked={row.locationType === "International"}
+          onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+        />
+        <span className="text-sm">International</span>
+      </label>
+    </div>
+
+  </div>
+</td>
+
                           <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.quantity} onChange={(e) => handleDetailedBudgetChange(row.id, 'quantity', e.target.value)} /></td>
                           <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.costPerUnit} onChange={(e) => handleDetailedBudgetChange(row.id, 'costPerUnit', e.target.value)} /></td>
-                          <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.totalAmount} onChange={(e) => handleDetailedBudgetChange(row.id, 'totalAmount', e.target.value)} /></td>
+                          <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-gray-200 leading-tight focus:outline-none focus:shadow-outline" value={row.totalAmount || 0} readOnly />
+</td>
+
                           <td className="px-4 py-2">
                             <button
                               type="button"
@@ -407,7 +615,7 @@ export default function EventProposalForm() {
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Sponsorship Details</h3>
                 <div className="overflow-x-auto">
                   <table className="table-auto w-full shadow-md rounded-md">
-                    <thead className="bg-gray-100">
+                    <thead className="bg-blue-50">
                       <tr className="text-left">
                         <th className="px-4 py-2">Sponsorship Type</th>
                         <th className="px-4 py-2">Associating Agencies</th>

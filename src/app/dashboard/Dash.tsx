@@ -224,8 +224,18 @@ export default function EventPortal() {
     }
 
     return (
-        <><div style={{ backgroundImage: "url('/tp.jpg')" }}>
-            <div className={`bg-gray-100 bg-opacity-90 min-h-screen font-sans text-gray-900 ${selectedProposal ? 'blur-sm' : ''}`}>
+        <><div
+        className=""
+        style={{
+          backgroundImage: "url('/SRMIST-BANNER.jpg')",
+          backgroundSize: "cover", // Stretches to fill
+          backgroundAttachment: "fixed",
+          backgroundPosition: "center",
+
+        }}
+      >
+      
+            <div className={`bg-gray-100 bg-opacity-70 min-h-screen font-sans text-gray-900 ${selectedProposal ? 'blur-sm' : ''}`}>
                 <div className="p-6 max-w-7xl mx-auto space-y-8">
                     <div className="flex justify-between items-center">
                         <div>
@@ -303,8 +313,10 @@ export default function EventPortal() {
                                             <thead>
                                                 <tr>
                                                     <th>Title</th>
-                                                    <th>Organizer</th>
-                                                    <th>Location</th>
+                                                    <th>Organizing department</th>
+                                                    
+                                                    <th>Convener</th>
+                                                   
                                                     <th>Date</th>
                                                     <th>Status</th>
                                                 </tr>
@@ -314,7 +326,7 @@ export default function EventPortal() {
                                                     <tr key={proposal.id}>
                                                         <td>{proposal.title}</td>
                                                         <td>{proposal.organizer}</td>
-                                                        <td>{proposal.location || 'N/A'}</td>
+                                                        <td>{proposal.convenerName}</td>
                                                         <td>{proposal.date}</td>
                                                         <td>
                                                             <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : 'error'}`}>{proposal.status}</div>
@@ -410,9 +422,9 @@ export default function EventPortal() {
             </div>
 
             {selectedProposal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">
-                    <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-                        <div className="flex justify-between items-center mb-4">
+                <div className="fixed inset-0 z-50 shadow-md shadow-blue-200 flex items-center justify-center bg-gray-500 bg-opacity-50">
+                    <div className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-xl shadow-blue-950 p-8 max-w-md w-full">
+                        <div className="flex justify-between rounded-md bg-blue-100 items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
                             <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
                                 <X className="h-6 w-6" />
@@ -457,6 +469,7 @@ export default function EventPortal() {
                         <div className="mt-6 flex justify-end space-x-2">
                             {selectedProposal.status !== 'Approved' && (
                                 <>
+                                <button className="btn btn-info font-bold text-white" >Review</button>
                                     <button
                                         onClick={() => updateProposalStatus(selectedProposal.id, 'Rejected')}
                                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -466,13 +479,33 @@ export default function EventPortal() {
                                         Reject
                                     </button>
                                     <button
-                                        onClick={() => updateProposalStatus(selectedProposal.id, 'Approved')}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                                        type="button"
-                                        disabled={isUpdatingStatus}
-                                    >
-                                        Approve
-                                    </button>
+    onClick={async () => {
+        updateProposalStatus(selectedProposal.id, 'Approved');
+
+        try {
+            const response = await fetch('/api/sendmail', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ proposalId: selectedProposal.id }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to send email');
+
+            console.log('Email sent successfully:', data.message);
+        } catch (error) {
+            console.error('Error sending email:', error);
+        }
+    }}
+    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+    type="button"
+    disabled={isUpdatingStatus}
+>
+    Approve
+</button>
+
                                 </>
                             )}
                         </div>
