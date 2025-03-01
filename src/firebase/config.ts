@@ -28,9 +28,9 @@ if (typeof window !== 'undefined') { // Check if window is defined (browser envi
   console.warn("Firebase Analytics and Firestore not initialized on server-side.");
 
   // If you DO need Firestore server-side (for some specific purpose), you can initialize Firestore only:
-  app = initializeApp(firebaseConfig); // You might still need to initialize the app for server-side Firestore
-  db = getFirestore(app); // Initialize Firestore -  ensure your Firebase config is suitable for server-side if needed.
-  analytics = null; // Set analytics to null as it's not available server-side
+   const app = initializeApp(firebaseConfig); // You might still need to initialize the app for server-side Firestore
+  const db = getFirestore(app); // Initialize Firestore -  ensure your Firebase config is suitable for server-side if needed.
+  const analytics = null; // Set analytics to null as it's not available server-side
 }
 
 
