@@ -12,7 +12,7 @@ export default function EventProposalForm() {
 
   // Form field states (rest remain the same)
   const [organizingDepartment, setOrganizingDepartment] = useState('');
-  const [eventTitle, setEventTitle] = useState('');
+  const [eventTitle, setEventTitle] = useState<string>('');
   const [eventDescription, setEventDescription] = useState('');
   const [durationEvent, setDurationEvent] = useState('');
  // const [startDate, setStartDate] = useState("");
@@ -248,7 +248,7 @@ const handleSubmit = async (e) => {
                     id="event-title"
                     placeholder="Enter Event Title"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={eventTitle}
+                    value={eventTitle ?? ""}
                     onChange={(e) => setEventTitle(e.target.value)}
                     required
                   />
@@ -273,15 +273,16 @@ const handleSubmit = async (e) => {
     Start Date & Time
   </label>
   <input
-    type="datetime-local"
-    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-    value={startDate}
-    onChange={(e) => {
-      setStartDate(e.target.value);
-      calculateDuration();
-    }}
-    required
-  />
+  type="datetime-local"
+  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+  value={startDate ?? ""} // <-- Ensures it's never null
+  onChange={(e) => {
+    setStartDate(e.target.value);
+    calculateDuration();
+  }}
+  required
+/>
+
 
   <label className="block text-gray-700 bg-white text-sm font-bold mt-4 mb-2">
     End Date & Time
