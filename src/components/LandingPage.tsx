@@ -36,16 +36,7 @@ const LandingPage = () => {
             
           </div>
 
-          {/* Right Section - Image in a Box */}
-          <div className="lg:w-1/2 flex justify-center items-center"> {/* Right half width, center content */}
-            <div className="p-6 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-shadow duration-300"> {/* Box around image */}
-              <img
-                src="/tp.jpg" // Replace with your image
-                className="max-w-full h-auto rounded-2xl" // Image within box, rounded corners
-                alt="Proposal Management System Interface"
-              />
-            </div>
-          </div>
+
 
         </div>
       </section>
