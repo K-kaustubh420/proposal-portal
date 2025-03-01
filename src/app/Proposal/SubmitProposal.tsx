@@ -5,6 +5,8 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Trash2 } from 'lucide-react';
 import { db } from '@/firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
+import { FaCalendarAlt } from "react-icons/fa";
+
 
 export default function EventProposalForm() {
   // Initialize startDate to null initially
@@ -111,6 +113,7 @@ const [endDate, setEndDate] = useState("");
     );
     setSponsorshipRows(updatedRows);
   };
+
 // function for form submission
 const handleSubmit = async (e) => {
   e.preventDefault(); // Prevent default form submission
@@ -150,6 +153,7 @@ const handleSubmit = async (e) => {
       durationEvent: calculatedDuration, // Store calculated duration
       eventStartDate: start.toISOString(), // Store start date as ISO string
       eventEndDate: end.toISOString(), // Store end date as ISO string
+      eventDate: start.toISOString(), //date
       category,
       designation,
       estimatedBudget,
@@ -200,6 +204,26 @@ const handleSubmit = async (e) => {
       { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
     ]);
     setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
+    //sendmail
+    const sendMail = async (convenerEmail: string) => {
+      const response = await fetch('/api/formmail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+              subject: "Form Submission Received", 
+              message: "Your form has been sent and is pending for an action.", 
+              recipientEmail: convenerEmail // Using convenerEmail
+          }),
+      });
+  
+      if (response.ok) {
+          alert("Email sent successfully!");
+      } else {
+          console.error("Error sending email:", await response.text());
+      }
+  };
+  
+  
 
   } catch (error) {
     console.error('Error submitting proposal:', error);
@@ -267,43 +291,60 @@ const handleSubmit = async (e) => {
                   />
                 </div>
 
+<div className="bg-transparent p-6  w-full max-w-xl mx-auto">
+  {/* Header */}
+  <h2 className="text-base font-bold text-gray-800 flex items-left gap-2">
+    <FaCalendarAlt className="text-blue-500" /> Event Schedule
+  </h2>
 
-<div>
-  <label className="block text-gray-700 bg-white text-sm font-bold mb-2">
-    Start Date & Time
-  </label>
-  <input
-  type="datetime-local"
-  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-  value={startDate ?? ""} // <-- Ensures it's never null
-  onChange={(e) => {
-    setStartDate(e.target.value);
-    calculateDuration();
-  }}
-  required
-/>
+  {/* Date Pickers Row */}
+  <div className="flex items-center justify-between mt-4">
+    {/* Start Date */}
+    <div className="flex-1">
+      <label className="block text-gray-700 text-sm font-semibold mb-1">
+        Start Date & Time
+      </label>
+      <DatePicker
+        selected={startDate}
+        onChange={(date) => {
+          setStartDate(date);
+          calculateDuration();
+        }}
+        showTimeSelect
+        dateFormat="Pp"
+        className="w-full px-4 py-2 bg-transparent border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
 
+    {/* Divider */}
+    <div className="w-[2px] h-12 bg-gray-300 mx-4"></div>
 
-  <label className="block text-gray-700 bg-white text-sm font-bold mt-4 mb-2">
-    End Date & Time
-  </label>
-  <input
-    type="datetime-local"
-    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-    value={endDate}
-    onChange={(e) => {
-      setEndDate(e.target.value);
-      calculateDuration();
-    }}
-    required
-  />
+    {/* End Date */}
+    <div className="flex-1">
+      <label className="block text-gray-700 text-sm font-semibold mb-1">
+        End Date & Time
+      </label>
+      <DatePicker
+        selected={endDate}
+        onChange={(date) => {
+          setEndDate(date);
+          calculateDuration();
+        }}
+        showTimeSelect
+        dateFormat="Pp"
+        className="w-full px-4 bg-transparent py-2 border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
 
+  {/* Duration Below */}
   {durationEvent && (
-    <p className="mt-4 text-gray-800 font-semibold">
-      Duration: {durationEvent}
+    <p className="mt-4 text-center text-gray-800 font-semibold bg-blue-50 px-4 py-2 rounded-lg">
+      ⏳ Duration: {durationEvent}
     </p>
   )}
 </div>
+
 
 
                 <div>

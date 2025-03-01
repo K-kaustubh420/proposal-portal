@@ -338,7 +338,7 @@ const DashboardContent: React.FC<{
                                                             <td>{proposal.title}</td>
                                                             <td>{proposal.organizer}</td>
                                                             <td>{proposal.convenerName}</td>
-                                                            <td>{proposal.date}</td>
+                                                            <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
                                                             <td>
                                                                 <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : proposal.status === 'Rejected' ? 'error' : proposal.status === 'Review' ? 'info' : ''}`}>{proposal.status}</div>
                                                             </td>
@@ -432,8 +432,20 @@ const DashboardContent: React.FC<{
                 </div>
 
                 {selectedProposal && (
-                    <div className="fixed inset-0 z-50 shadow-md shadow-blue-200 flex items-center justify-center bg-gray-500 bg-opacity-50">
-                        <div className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-md w-full">
+ <motion.div
+ className="fixed inset-0 z-50 shadow-md shadow-blue-200 flex items-center justify-center bg-gray-500 bg-opacity-50"
+ initial={{ rotateY: 90, opacity: 0 }}
+    animate={{ rotateY: 0, opacity: 1 }}
+    exit={{ rotateY: 90, opacity: 0 }}
+    transition={{ duration: 0.5 }}
+>
+ <motion.div
+     className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-md w-full"
+     initial={{ y: 50, opacity: 0 }}
+     animate={{ y: 0, opacity: 1 }}
+     exit={{ y: 50, opacity: 0 }}
+     transition={{ duration: 0.3, type: "spring", stiffness: 100 }}
+ >
                             <div className="flex justify-between rounded-md items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
                                 <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
@@ -504,8 +516,8 @@ const DashboardContent: React.FC<{
                                     <p className={`${statusUpdateMessage.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{statusUpdateMessage}</p>
                                 </div>
                             )}
-                        </div>
-                    </div>
+                     </motion.div>
+            </motion.div>
                 )}
             </div>
         </>
