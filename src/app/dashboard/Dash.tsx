@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { Line, Pie } from 'react-chartjs-2';
+import { motion } from "framer-motion";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -211,7 +212,8 @@ export default function EventPortal() {
                     proposal.id === proposalId ? { ...proposal, status: newStatus } : proposal
                 )
             );
-            setSelectedProposal(null);
+            
+            setSelectedProposal(null); 
         } catch (error) {
             console.error("Error updating proposal status:", error);
         } finally {
@@ -422,8 +424,20 @@ export default function EventPortal() {
             </div>
 
             {selectedProposal && (
-                <div className="fixed inset-0 z-50 shadow-md shadow-blue-200 flex items-center justify-center bg-gray-500 bg-opacity-50">
-                    <div className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-md w-full">
+               <motion.div
+               className="fixed inset-0 z-50 shadow-md shadow-blue-200 flex items-center justify-center bg-gray-500 bg-opacity-50"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               transition={{ duration: 0.3 }}
+           >
+               <motion.div
+                   className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-md w-full"
+                   initial={{ y: -50, opacity: 0 }}
+                   animate={{ y: 0, opacity: 1 }}
+                   exit={{ y: -50, opacity: 0 }}
+                   transition={{ duration: 0.3, type: "spring", stiffness: 100 }}
+               >
                         <div className="flex justify-between rounded-md items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
                             <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
@@ -491,8 +505,8 @@ export default function EventPortal() {
                                 </>
                             )}
                         </div>
-                    </div>
-                </div>
+                        </motion.div>
+                        </motion.div>
 
             )}
         </div> </>

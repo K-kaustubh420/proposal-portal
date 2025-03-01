@@ -14,6 +14,8 @@ export default function EventProposalForm() {
   const [eventTitle, setEventTitle] = useState('');
   const [eventDescription, setEventDescription] = useState('');
   const [durationEvent, setDurationEvent] = useState('');
+ // const [startDate, setStartDate] = useState("");
+const [endDate, setEndDate] = useState("");
   const [category, setCategory] = useState('');
   const [designation, setDesignation] = useState('');
   const [estimatedBudget, setEstimatedBudget] = useState('');
@@ -40,6 +42,27 @@ export default function EventProposalForm() {
   const [sponsorshipRows, setSponsorshipRows] = useState([
     { id: 1, sponsorshipType: '', associatingAgencies: '' }
   ]);
+  // calculate the duration 
+  const calculateDuration = () => {
+    if (!startDate || !endDate) return;
+  
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+  
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      setDurationEvent("Invalid date range");
+      return;
+    }
+  
+    const diffMs = end - start;
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+    setDurationEvent(`${days} days, ${hours} hours, ${minutes} minutes`);
+  };
+  
+  
 
   // Function to add a new row to Detailed Budget
   const addDetailedBudgetRow = () => {
@@ -88,81 +111,101 @@ export default function EventProposalForm() {
     setSponsorshipRows(updatedRows);
   };
 // function for form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission
-  
-    // Calculate total detailed budget
-    const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
-  
-    // Check if estimated budget matches
-    if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
-      alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
-      return; // Stop form submission
-    }
-  
-    try {
-      const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
-      await addDoc(eventProposalsCollection, {
-        organizingDepartment,
-        eventTitle,
-        eventDescription, // Include event description
-        durationEvent,
-        eventDate: startDate.toISOString(), // Store date as ISO string
-        category,
-        designation,
-        estimatedBudget,
-        sponsorshipDetails,
-        pastEvents,
-        relevantDetails,
-        chiefGuestName,
-        chiefGuestDesignation,
-        convenerName,
-        convenerEmail,
-        fundingDetails: {
-          universityFund: fundUniversity,
-          registrationFund: fundRegistration,
-          sponsorshipFund: fundSponsorship,
-          otherSourcesFund: fundOther,
-        },
-        detailedBudget: detailedBudgetRows,
-        sponsorshipDetailsRows: sponsorshipRows,
-        submissionTimestamp: new Date().toISOString(), // Add timestamp
-      });
-  
-      alert('Event proposal submitted successfully!');
-      
-      // Reset form fields
-      setOrganizingDepartment('');
-      setEventTitle('');
-      setEventDescription('');
-      setDurationEvent('');
-      setStartDate(new Date());
-      setCategory('');
-      setDesignation('');
-      setEstimatedBudget('');
-      setSponsorshipDetails('');
-      setPastEvents('');
-      setRelevantDetails('');
-      setChiefGuestName('');
-      setChiefGuestDesignation('');
-      setConvenerName('');
-      setConvenerEmail('');
-      setFundUniversity('');
-      setFundRegistration('');
-      setFundSponsorship('');
-      setFundOther('');
-      setDetailedBudgetRows([
-        { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
-        { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
-        { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
-      ]);
-      setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
-  
-    } catch (error) {
-      console.error('Error submitting proposal:', error);
-      alert('Failed to submit proposal. Please try again.');
-    }
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault(); // Prevent default form submission
+
+  // Convert startDate and endDate to Date objects
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    alert("Invalid date selection. Please choose valid start and end dates.");
+    return;
+  }
+
+  // Calculate duration
+  const diffMs = end - start;
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  const calculatedDuration = `${days} days, ${hours} hours, ${minutes} minutes`;
+
+  // Calculate total detailed budget
+  const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
+
+  // Check if estimated budget matches
+  if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
+    alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
+    return; // Stop form submission
+  }
+
+  try {
+    const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
+    await addDoc(eventProposalsCollection, {
+      organizingDepartment,
+      eventTitle,
+      eventDescription, // Include event description
+      durationEvent: calculatedDuration, // Store calculated duration
+      eventStartDate: start.toISOString(), // Store start date as ISO string
+      eventEndDate: end.toISOString(), // Store end date as ISO string
+      category,
+      designation,
+      estimatedBudget,
+      sponsorshipDetails,
+      pastEvents,
+      relevantDetails,
+      chiefGuestName,
+      chiefGuestDesignation,
+      convenerName,
+      convenerEmail,
+      fundingDetails: {
+        universityFund: fundUniversity,
+        registrationFund: fundRegistration,
+        sponsorshipFund: fundSponsorship,
+        otherSourcesFund: fundOther,
+      },
+      detailedBudget: detailedBudgetRows,
+      sponsorshipDetailsRows: sponsorshipRows,
+      submissionTimestamp: new Date().toISOString(), // Add timestamp
+    });
+
+    alert('Event proposal submitted successfully!');
+
+    // Reset form fields
+    setOrganizingDepartment('');
+    setEventTitle('');
+    setEventDescription('');
+    setDurationEvent('');
+    setStartDate('');
+    setEndDate(''); // Reset end date as well
+    setCategory('');
+    setDesignation('');
+    setEstimatedBudget('');
+    setSponsorshipDetails('');
+    setPastEvents('');
+    setRelevantDetails('');
+    setChiefGuestName('');
+    setChiefGuestDesignation('');
+    setConvenerName('');
+    setConvenerEmail('');
+    setFundUniversity('');
+    setFundRegistration('');
+    setFundSponsorship('');
+    setFundOther('');
+    setDetailedBudgetRows([
+      { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+      { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+      { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
+    ]);
+    setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
+
+  } catch (error) {
+    console.error('Error submitting proposal:', error);
+    alert('Failed to submit proposal. Please try again.');
+  }
+};
+
   
 
 
@@ -225,20 +268,42 @@ export default function EventProposalForm() {
 </div>
 
 
-              <div>
-                <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="duration-event">
-                  Duration of Event
-                </label>
-                <input
-                  type="text"
-                  id="duration-event"
-                  placeholder="e.g., 1 day, 2 days, etc."
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                  value={durationEvent}
-                  onChange={(e) => setDurationEvent(e.target.value)}
-                  required
-                />
-              </div>
+<div>
+  <label className="block text-gray-700 bg-white text-sm font-bold mb-2">
+    Start Date & Time
+  </label>
+  <input
+    type="datetime-local"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={startDate}
+    onChange={(e) => {
+      setStartDate(e.target.value);
+      calculateDuration();
+    }}
+    required
+  />
+
+  <label className="block text-gray-700 bg-white text-sm font-bold mt-4 mb-2">
+    End Date & Time
+  </label>
+  <input
+    type="datetime-local"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={endDate}
+    onChange={(e) => {
+      setEndDate(e.target.value);
+      calculateDuration();
+    }}
+    required
+  />
+
+  {durationEvent && (
+    <p className="mt-4 text-gray-800 font-semibold">
+      Duration: {durationEvent}
+    </p>
+  )}
+</div>
+
 
               <div>
                 <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="event-date">
@@ -267,10 +332,25 @@ export default function EventProposalForm() {
                   onChange={(e) => setCategory(e.target.value)}
                   required
                 >
-                  <option value="">Select Category</option>
-                  <option value="workshop">Workshop</option>
-                  <option value="seminar">Seminar</option>
-                  <option value="conference">Conference</option>
+    <option value="">Select Category</option>
+    <option value="conference_national">Conference - National</option>
+    <option value="conference_international">Conference - International</option>
+    <option value="fdp">FDPs</option>
+    <option value="workshop">Workshops</option>
+    <option value="winter_summer_school">Winter / Summer Schools</option>
+    <option value="mdp_pdp">MDP / PDP</option>
+    <option value="student_programme">Student Related Programmes</option>
+    <option value="alumni_programme">Alumni Related Programmes</option>
+    <option value="outreach_programme">Outreach Programmes</option>
+    <option value="value_added_course">Value Added Courses</option>
+    <option value="association_activity">Association Activities</option>
+    <option value="counselling_activity">Counselling Activities</option>
+    <option value="commemoration_day">International / National Commemoration Days</option>
+    <option value="upskilling_non_teaching">Upskilling for Non-Teaching</option>
+    <option value="industrial_conclave">Industrial Conclave</option>
+    <option value="patent_commercialisation">Patent Commercialisation</option>
+    <option value="lecture_series_industry_expert">Lecture Series - Industry Experts</option>
+
                 </select>
               </div>
 
