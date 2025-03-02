@@ -26,8 +26,9 @@ import {
     X,
     Plus
 } from 'lucide-react';
-import { db } from '@/firebase/config';
+import { db , auth, app } from '@/firebase/config'; // Import auth from firebase/config
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth'; // Import necessary auth functions
 
 ChartJS.register(
     CategoryScale,
@@ -118,7 +119,7 @@ const pieDataOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context :any ) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
     },
@@ -161,7 +162,7 @@ const LoadingComponent = () => (
 
 const NoProposalsComponent = () => (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
-        No proposals available.
+        No proposals available for you.
     </div>
 );
 
@@ -169,7 +170,7 @@ const NoProposalsComponent = () => (
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event) => {
+    const handleChange = (event: any) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -197,12 +198,14 @@ const MyDashboardContent: React.FC<{
     selectedProposal: Proposal | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
+    currentUserEmail: string | null | undefined; // Add currentUserEmail as prop
 }> = ({
     userProposals,
     loading,
     selectedProposal,
     handleProposalClick,
     closePopup,
+    currentUserEmail, // Destructure currentUserEmail
 }) => {
 
     // Calculate proposal counts for the user
@@ -253,7 +256,7 @@ const MyDashboardContent: React.FC<{
                         <div className="flex justify-between items-center">
                             <div>
                                 <h1 className="text-2xl font-bold text-blue-700">My Dashboard</h1>
-                                <p className="text-gray-500 text-sm">Snapshot of your event proposals</p>
+                                <p className="text-gray-500 text-sm">Snapshot of your event proposals for {currentUserEmail}</p> {/* Display user email */}
                             </div>
                             <div>
                                 <YearlyDropdown />
@@ -512,17 +515,30 @@ export default function MyDashboard() {
     const [userProposals, setUserProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+    const [currentUserEmail, setCurrentUserEmail] = useState<string | null | undefined>(null); // State for user email
 
-    // ** IMPORTANT **: Replace with the actual email you want to filter by
-    const currentUserEmail = "neupanekiran512@gmail.com";
+    useEffect(() => {
+        const authInstance = getAuth(app); // Get auth instance
+        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+            if (user) {
+                setCurrentUserEmail(user.email); // Set current user email
+            } else {
+                setCurrentUserEmail(null);
+              
+            }
+        });
+
+        return () => unsubscribe(); // Unsubscribe on unmount
+    }, []);
+
 
     // Fetch proposals from Firebase and filter by user email
-    const fetchUserProposals = useCallback(async () => {
+    const fetchUserProposals = useCallback(async (userEmail) => { // Accept userEmail as argument
         setLoading(true);
         try {
             const proposalsCollection = collection(db, 'eventProposals');
-            // Create a query to filter proposals by convenerEmail
-            const q = query(proposalsCollection, where("convenerEmail", "==", currentUserEmail));
+            // Create a query to filter proposals by convenerEmail and now use userEmail
+            const q = query(proposalsCollection, where("convenerEmail", "==", userEmail));
             const proposalSnapshot = await getDocs(q);
             const filteredProposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data();
@@ -549,11 +565,16 @@ export default function MyDashboard() {
             console.error("Error fetching proposals:", error);
             setLoading(false);
         }
-    }, [currentUserEmail]); // Depend on currentUserEmail
+    }, []); // Removed currentUserEmail from dependency array
 
     useEffect(() => {
-        fetchUserProposals();
-    }, [fetchUserProposals]);
+        if (currentUserEmail) { // Fetch proposals only when currentUserEmail is available
+            fetchUserProposals(currentUserEmail); // Pass currentUserEmail to fetchUserProposals
+        } else {
+            setUserProposals([]); // Clear proposals if no user email
+            setLoading(false); // Stop loading
+        }
+    }, [fetchUserProposals, currentUserEmail]); // Add currentUserEmail as dependency
 
     // Handlers for proposal actions (reusing from EventPortal)
     const handleProposalClick = useCallback((proposal: Proposal) => {
@@ -572,6 +593,7 @@ export default function MyDashboard() {
             selectedProposal={selectedProposal}
             handleProposalClick={handleProposalClick}
             closePopup={closePopup}
+            currentUserEmail={currentUserEmail} // Pass currentUserEmail to content component
         />
     );
 }
