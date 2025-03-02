@@ -2,8 +2,7 @@ import React from 'react'
 
 const LandingPage = () => {
   return (
-    <div
-  className=""
+    <div className=" "
   style={{
     backgroundImage: "url('/SRMIST-BANNER.jpg')",
     backgroundSize: "100% 100%", // Stretches to fit
@@ -12,7 +11,7 @@ const LandingPage = () => {
     width: "100%", // Adjust width if needed
     height: "100vh" // Example: Full viewport height
   }}
->
+   >
 
     <div className=" bg-opacity-70 bg-white min-h-screen flex flex-col justify-center items-center" > {/* Vertically centered */}
       {/* Hero Section - Split Left Text, Right Image */}

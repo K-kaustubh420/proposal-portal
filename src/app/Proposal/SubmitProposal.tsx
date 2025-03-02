@@ -45,27 +45,27 @@ const [endDate, setEndDate] = useState("");
   const [sponsorshipRows, setSponsorshipRows] = useState([
     { id: 1, sponsorshipType: '', associatingAgencies: '' }
   ]);
-  // calculate the duration 
+  // calculate the duration
   const calculateDuration = () => {
     if (!startDate || !endDate) return;
-  
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-  
+
+    const start : Date = new Date(startDate);
+
+    const end : Date = new Date(endDate);
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       setDurationEvent("Invalid date range");
       return;
     }
-  
+
     const diffMs = end - start;
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  
+
     setDurationEvent(`${days} days, ${hours} hours, ${minutes} minutes`);
   };
-  
-  
+
 
   // Function to add a new row to Detailed Budget
   const addDetailedBudgetRow = () => {
@@ -176,6 +176,7 @@ const handleSubmit = async (e) => {
     });
 
     alert('Event proposal submitted successfully!');
+    sendMail(convenerEmail); // Call sendMail function after successful submission
 
     // Reset form fields
     setOrganizingDepartment('');
@@ -204,26 +205,7 @@ const handleSubmit = async (e) => {
       { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
     ]);
     setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
-    //sendmail
-    const sendMail = async (convenerEmail: string) => {
-      const response = await fetch('/api/formmail', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-              subject: "Form Submission Received", 
-              message: "Your form has been sent and is pending for an action.", 
-              recipientEmail: convenerEmail // Using convenerEmail
-          }),
-      });
-  
-      if (response.ok) {
-          alert("Email sent successfully!");
-      } else {
-          console.error("Error sending email:", await response.text());
-      }
-  };
-  
-  
+
 
   } catch (error) {
     console.error('Error submitting proposal:', error);
@@ -231,7 +213,25 @@ const handleSubmit = async (e) => {
   }
 };
 
-  
+  //sendmail function (outside handleSubmit but inside component)
+  const sendMail = async (recipientEmail: string) => {
+    const response = await fetch('/api/formmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            subject: "Event Proposal Submitted Successfully",
+            message: "Dear Convener,\n\nYour event proposal has been submitted successfully and is currently pending review. We will notify you of any updates regarding your proposal.\n\nThank you for your submission.\n\nSincerely,\nSRM Event Management System",
+            recipientEmail: recipientEmail, // Use the recipientEmail parameter
+        }),
+    });
+
+    if (response.ok) {
+        alert("Confirmation email sent to convener!");
+    } else {
+        console.error("Error sending confirmation email:", await response.text());
+        alert("Error sending confirmation email.");
+    }
+};
 
 
   return (

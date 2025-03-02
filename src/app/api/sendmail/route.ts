@@ -30,9 +30,9 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify transporter configuration on startup (Keep your existing verification)
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('Transporter configuration failed:', error);
+transporter.verify((err: any, success: any) => {
+    if (err) {
+        console.error('Transporter configuration failed:', err);
     } else {
         console.log('Transporter is ready:', success);
     }
