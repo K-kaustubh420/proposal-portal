@@ -387,9 +387,21 @@ const MyDashboardContent: React.FC<{
                                                 <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} >
                                                     <div className="flex items-center">
                                                         <div className="avatar mr-3">
-                                                            <div className="mask mask-squircle w-8 h-8">
-                                                                <img src={`/avatar${(proposal.id + 1) % 3 + 1}.png`} alt="Avatar" />
-                                                            </div>
+                                                        <div className="mask mask-squircle w-8 h-8">
+  {proposal.id % 3 === 0 ? (
+    <img 
+      src={`/avatar${(proposal.id % 3) + 1}.png`} 
+      onError={(e) => e.target.style.display = "none"} 
+      alt={proposal.title || "Avatar"} 
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
+      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+    </div>
+  )}
+</div>
+
                                                         </div>
                                                         <div>
                                                             <div className="font-semibold text-gray-600">{proposal.organizer}</div>
@@ -415,9 +427,21 @@ const MyDashboardContent: React.FC<{
                                                 <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} style={{ cursor: 'pointer' }}>
                                                     <div className="flex items-center">
                                                         <div className="avatar mr-3">
-                                                            <div className="mask mask-squircle w-8 h-8">
-                                                                <img src={`/avatar${proposal.id % 3 + 1}.png`} alt="Avatar" />
-                                                            </div>
+                                                        <div className="mask mask-squircle w-8 h-8">
+  {proposal.id % 3 === 0 ? (
+    <img 
+      src={`/avatar${(proposal.id % 3) + 1}.png`} 
+      onError={(e) => e.target.style.display = "none"} 
+      alt={proposal.title || "Avatar"} 
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
+      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+    </div>
+  )}
+</div>
+
                                                         </div>
                                                         <div>
                                                             <div className="font-semibold text-gray-600">{proposal.organizer}</div>
