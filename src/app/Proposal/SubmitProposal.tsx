@@ -236,8 +236,9 @@ const handleSubmit = async (e) => {
         alert("Error sending confirmation email.");
     }
 };
-
-
+useEffect(() => {
+  setEstimatedBudget(totalDetailedBudget);
+}, [totalDetailedBudget]);
   return (
     <>
       <div style={{
@@ -598,6 +599,7 @@ const handleSubmit = async (e) => {
     placeholder="Total Budget"
     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
     value={totalDetailedBudget} // Automatically filled from totalDetailedBudget
+    onChange={(e) => setEstimatedBudget(e.target.value)}
     readOnly // Makes it non-editable
   />
 </div>
