@@ -26,6 +26,8 @@ import {
     X,
     Plus
 } from 'lucide-react';
+import { db } from '@/firebase/config';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 ChartJS.register(
     CategoryScale,
@@ -86,7 +88,7 @@ const lineData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
         label: 'Monthly Submissions',
-        data: [60, 55, 40, 85, 64, 70, 94, 34, 78, 54, 76, 56], // Demo data
+        data: [60, 55, 40, 85, 64, 70, 94, 34, 78, 54, 76, 56], // Demo data - will be replaced
         borderColor: '#3b82f6',
         borderWidth: 3,
         fill: true,
@@ -180,10 +182,10 @@ function YearlyDropdown() {
         <option value="Yearly">Yearly</option>
         <option value="Monthly">Monthly</option>
         <option value="Weekly">Weekly</option>
-        <option value="Weekly">Quaterly</option>
-        <option value="Weekly">Weekly</option>
-        <option value="Weekly">Weekly</option>
-        <option value="Weekly">Weekly</option>
+        <option value="Quaterly">Quaterly</option>
+        <option value="Semesterly">Semesterly</option>
+        <option value="Academic Yearly">Academic Yearly</option>
+
     </select>
     );
 }
@@ -511,97 +513,47 @@ export default function MyDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
-    // **Demo Data - Replace Firebase Fetching**
-    const demoProposals: Proposal[] = [
-        {
-            id: '1',
-            title: 'Tech Workshop Series',
-            organizer: 'Computer Science Department',
-            date: '2024-08-15T12:00:00.000Z',
-            status: 'Approved',
-            category: 'Workshop',
-            cost: 1500,
-            email: 'user@example.com',
-            description: 'A series of workshops on cutting-edge technologies.',
-            convenerName: 'Dr. Smith',
-            convenerEmail: 'user@example.com',
-        },
-        {
-            id: '2',
-            title: 'Cultural Fest 2024',
-            organizer: 'Cultural Club',
-            date: '2024-09-20T18:00:00.000Z',
-            status: 'Pending',
-            category: 'Cultural Event',
-            cost: 3000,
-            email: 'user@example.com',
-            description: 'Annual cultural festival with music, dance, and drama.',
-            convenerName: 'Priya Sharma',
-            convenerEmail: 'user@example.com',
-        },
-        {
-            id: '3',
-            title: 'Robotics Competition',
-            organizer: 'Robotics Club',
-            date: '2024-07-10T10:00:00.000Z',
-            status: 'Rejected',
-            category: 'Competition',
-            cost: 2000,
-            email: 'user@example.com',
-            description: 'Inter-college robotics competition.',
-            convenerName: 'Raj Patel',
-            convenerEmail: 'user@example.com',
-        },
-        {
-            id: '4',
-            title: 'Startup Idea Pitch',
-            organizer: 'Entrepreneurship Cell',
-            date: '2024-10-25T14:00:00.000Z',
-            status: 'Review',
-            category: 'Seminar',
-            cost: 500,
-            email: 'user@example.com',
-            description: 'Platform to pitch startup ideas to investors.',
-            convenerName: 'Anjali Kapoor',
-            convenerEmail: 'user@example.com',
-        },
-        {
-            id: '5',
-            title: 'AI and Machine Learning Seminar',
-            organizer: 'AI Research Group',
-            date: '2024-11-15T11:00:00.000Z',
-            status: 'Approved',
-            category: 'Seminar',
-            cost: 800,
-            email: 'user@example.com',
-            description: 'Seminar on latest trends in AI and Machine Learning.',
-            convenerName: 'Dr. Lee',
-            convenerEmail: 'user@example.com',
-        },
-        {
-            id: '6',
-            title: 'Gaming Tournament',
-            organizer: 'Gaming Club',
-            date: '2024-12-05T16:00:00.000Z',
-            status: 'Pending',
-            category: 'Competition',
-            cost: 1200,
-            email: 'user@example.com',
-            description: 'Annual inter-department gaming tournament.',
-            convenerName: 'Vikram Singh',
-            convenerEmail: 'user@example.com',
-        }
-    ];
+    // ** IMPORTANT **: Replace with the actual email you want to filter by
+    const currentUserEmail = "neupanekiran512@gmail.com";
 
+    // Fetch proposals from Firebase and filter by user email
+    const fetchUserProposals = useCallback(async () => {
+        setLoading(true);
+        try {
+            const proposalsCollection = collection(db, 'eventProposals');
+            // Create a query to filter proposals by convenerEmail
+            const q = query(proposalsCollection, where("convenerEmail", "==", currentUserEmail));
+            const proposalSnapshot = await getDocs(q);
+            const filteredProposalsList = proposalSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    title: data.eventTitle,
+                    organizer: data.organizingDepartment,
+                    date: data.eventDate,
+                    status: data.proposalStatus || 'Pending',
+                    category: data.category,
+                    cost: data.estimatedBudget,
+                    email: data.convenerEmail,
+                    description: data.eventDescription,
+                    location: data.eventLocation,
+                    convenerName: data.convenerName,
+                    convenerEmail: data.convenerEmail,
+                    ...data,
+                };
+            }) as Proposal[]; // Type assertion to Proposal[]
+
+            setUserProposals(filteredProposalsList);
+            setLoading(false);
+        } catch (error) {
+            console.error("Error fetching proposals:", error);
+            setLoading(false);
+        }
+    }, [currentUserEmail]); // Depend on currentUserEmail
 
     useEffect(() => {
-        // Simulate fetching data (no Firebase call now)
-        setLoading(true);
-        setTimeout(() => {
-            setUserProposals(demoProposals);
-            setLoading(false);
-        }, 500); // Simulate loading delay
-    }, []);
+        fetchUserProposals();
+    }, [fetchUserProposals]);
 
     // Handlers for proposal actions (reusing from EventPortal)
     const handleProposalClick = useCallback((proposal: Proposal) => {
