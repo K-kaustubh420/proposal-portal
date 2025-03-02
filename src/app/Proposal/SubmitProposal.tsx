@@ -27,6 +27,8 @@ const [endDate, setEndDate] = useState("");
   const [relevantDetails, setRelevantDetails] = useState('');
   const [chiefGuestName, setChiefGuestName] = useState('');
   const [chiefGuestDesignation, setChiefGuestDesignation] = useState('');
+  const [chiefGuestAddress, setChiefGuestAddress] = useState('');
+  const [chiefGuestPhone, setChiefGuestPhone] = useState('');
   const [convenerName, setConvenerName] = useState('');
   const [convenerEmail, setConvenerEmail] = useState('');
   const [fundUniversity, setFundUniversity] = useState('');
@@ -40,6 +42,8 @@ const [endDate, setEndDate] = useState("");
     { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
     { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
   ]);
+
+  const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
   // State for Sponsorship Details Rows (rest remain the same)
   const [sponsorshipRows, setSponsorshipRows] = useState([
@@ -139,10 +143,10 @@ const handleSubmit = async (e) => {
   const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
   // Check if estimated budget matches
-  if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
-    alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
-    return; // Stop form submission
-  }
+  //if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
+ //   alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
+ //   return; // Stop form submission
+ // }
 
   try {
     const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
@@ -242,8 +246,8 @@ const handleSubmit = async (e) => {
         backgroundAttachment: "fixed",
         backgroundPosition: "center",
       }}>
-        <div className="bg-blue-50 bg-opacity-70 min-h-screen flex justify-center items-center py-10">
-          <div className="card bg-white shadow-xl rounded-2xl max-w-7xl w-full mx-4 md:mx-0">
+        <div className="bg-white bg-opacity-70 shadow-sm min-h-screen flex justify-center items-center py-10">
+          <div className="card bg-white shadow-md border border-blue-400 rounded-2xl max-w-7xl w-full mx-4 md:mx-0">
             <div className="card-body p-8">
               <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Submit Event Proposal</h2>
 
@@ -252,15 +256,69 @@ const handleSubmit = async (e) => {
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="organizing-department">
                     Organizing Department
                   </label>
-                  <input
-                    type="text"
-                    id="organizing-department"
-                    placeholder="Department Name"
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={organizingDepartment}
-                    onChange={(e) => setOrganizingDepartment(e.target.value)}
-                    required
-                  />
+                  <select
+  id="organizing-department"
+  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+  value={organizingDepartment}
+  onChange={(e) => setOrganizingDepartment(e.target.value)}
+  required
+>
+  <option value="">Select Department</option>
+  <optgroup label="Engineering and Technology">
+    <option value="Aerospace Engineering">Aerospace Engineering</option>
+    <option value="Automobile Engineering">Automobile Engineering</option>
+    <option value="Biomedical Engineering">Biomedical Engineering</option>
+    <option value="Biotechnology">Biotechnology</option>
+    <option value="Chemical Engineering">Chemical Engineering</option>
+    <option value="Civil Engineering">Civil Engineering</option>
+    <option value="Computer Science and Engineering">Computer Science and Engineering</option>
+    <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+    <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+    <option value="Information Technology">Information Technology</option>
+    <option value="Mechanical Engineering">Mechanical Engineering</option>
+    <option value="Mechatronics Engineering">Mechatronics Engineering</option>
+    <option value="Software Engineering">Software Engineering</option>
+  </optgroup>
+  <optgroup label="Science and Humanities">
+    <option value="Mathematics">Mathematics</option>
+    <option value="Physics and Nanotechnology">Physics and Nanotechnology</option>
+    <option value="Chemistry">Chemistry</option>
+    <option value="English">English</option>
+    <option value="Visual Communication">Visual Communication</option>
+    <option value="Journalism and Mass Communication">Journalism and Mass Communication</option>
+    <option value="Commerce">Commerce</option>
+    <option value="Economics">Economics</option>
+    <option value="Corporate Secretaryship">Corporate Secretaryship</option>
+  </optgroup>
+  <optgroup label="Management">
+    <option value="School of Management">School of Management</option>
+  </optgroup>
+  <optgroup label="Medicine and Health Sciences">
+    <option value="General Medicine">General Medicine</option>
+    <option value="Paediatrics">Paediatrics</option>
+    <option value="Psychiatry">Psychiatry</option>
+    <option value="Respiratory Medicine">Respiratory Medicine</option>
+    <option value="Dermatology">Dermatology</option>
+    <option value="Radio Diagnosis">Radio Diagnosis</option>
+    <option value="Anaesthesia">Anaesthesia</option>
+    <option value="Obstetrics & Gynaecology">Obstetrics & Gynaecology</option>
+    <option value="General Surgery">General Surgery</option>
+    <option value="Ophthalmology">Ophthalmology</option>
+    <option value="Orthopaedics">Orthopaedics</option>
+    <option value="Otolaryngology-Head & Neck Surgery (ENT)">Otolaryngology-Head & Neck Surgery (ENT)</option>
+    <option value="Physical Medicine and Rehabilitation">Physical Medicine and Rehabilitation</option>
+    <option value="Emergency Medicine">Emergency Medicine</option>
+    <option value="Transfusion Medicine and Blood Centre">Transfusion Medicine and Blood Centre</option>
+    <option value="Eye Bank">Eye Bank</option>
+  </optgroup>
+  <optgroup label="Law">
+    <option value="School of Law">School of Law</option>
+  </optgroup>
+  <optgroup label="Agricultural Sciences">
+    <option value="School of Agricultural Sciences">School of Agricultural Sciences</option>
+  </optgroup>
+</select>
+
                 </div>
 
                 <div>
@@ -278,18 +336,30 @@ const handleSubmit = async (e) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="event-description">
-                    Event Description
-                  </label>
-                  <textarea
-                    id="event-description"
-                    placeholder="Enter Event Description"
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={eventDescription}
-                    onChange={(e) => setEventDescription(e.target.value)}
-                    required
-                  />
-                </div>
+  <label
+    className="block text-gray-700 bg-white text-sm font-bold mb-2"
+    htmlFor="event-description"
+  >
+    Event Description
+  </label>
+  <textarea
+    id="event-description"
+    placeholder="Enter Event Description"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={eventDescription}
+    onChange={(e) => {
+      const words = e.target.value.split(/\s+/).filter(word => word !== "").length;
+      if (words <= 200) {
+        setEventDescription(e.target.value);
+      }
+    }}
+    required
+  />
+  <p className="text-sm text-gray-500 mt-1">
+    {eventDescription.split(/\s+/).filter(word => word !== "").length} / 200 words
+  </p>
+</div>
+
 
 <div className="bg-transparent p-6  w-full max-w-xl mx-auto">
   {/* Header */}
@@ -414,21 +484,7 @@ const handleSubmit = async (e) => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="estimated-budget">
-                    Total Estimated Budget (₹)
-                  </label>
-                  <input
-                    type="number"
-                    id="estimated-budget"
-                    placeholder="Enter Budget in Rupees"
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={estimatedBudget}
-                    onChange={(e) => setEstimatedBudget(e.target.value)}
-                    required
-                  />
-                </div>
-
+                
                 <div>
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="sponsorship-details">
                     Sponsorship Details
@@ -499,6 +555,37 @@ const handleSubmit = async (e) => {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
+                    Chief Guest / Celebrity Phone no
+                  </label>
+                  <input
+                    type="text"
+                    id="chief-guest-phone"
+                    placeholder="Enter phone no"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={chiefGuestPhone}
+                    onChange={(e) => setChiefGuestPhone(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
+                    Chief Guest / Celebrity Address
+                  </label>
+                  <input
+                    type="text"
+                    id="chief-guest-address"
+                    placeholder="Enter address"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={chiefGuestAddress}
+                    onChange={(e) => setChiefGuestAddress(e.target.value)}
+                    required
+                  />
+                </div>
+                
+
 
 
                 <div>
@@ -530,6 +617,23 @@ const handleSubmit = async (e) => {
                     required
                   />
                 </div>
+                <div>
+  <label
+    className="block text-gray-700 bg-white text-sm font-bold mb-2"
+    htmlFor="estimated-budget"
+  >
+    Total Estimated Budget (₹)
+  </label>
+  <input
+    type="number"
+    id="estimated-budget"
+    placeholder="Total Budget"
+    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+    value={totalDetailedBudget} // Automatically filled from totalDetailedBudget
+    readOnly // Makes it non-editable
+  />
+</div>
+
 
                 <div className="mt-8">
                   <h3 className="text-xl font-bold text-gray-800 mb-4">Funding Details (₹)</h3>
@@ -687,30 +791,31 @@ const handleSubmit = async (e) => {
                                 </div>
 
                                 {/* Domestic / International Radio Buttons (Right) */}
-                                <div className="w-1/3 pl-2 gap-4">
-                                  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
-                                    <input
-                                      type="radio"
-                                      name={`location-${row.id}`}
-                                      value="Domestic"
-                                      className="radio radio-primary"
-                                      checked={row.locationType === "Domestic"}
-                                      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
-                                    />
-                                    <span className="text-sm">Domestic</span>
-                                  </label>
-                                  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
-                                    <input
-                                      type="radio"
-                                      name={`location-${row.id}`}
-                                      value="International"
-                                      className="radio radio-primary"
-                                      checked={row.locationType === "International"}
-                                      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
-                                    />
-                                    <span className="text-sm">International</span>
-                                  </label>
-                                </div>
+                                <div className="w-1/3 pl-2">
+  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition mb-2">
+    <input
+      type="radio"
+      name={`location-${row.id}`}
+      value="Domestic"
+      className="radio radio-primary"
+      checked={row.locationType === "Domestic"}
+      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+    />
+    <span className="text-sm">Domestic</span>
+  </label>
+  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
+    <input
+      type="radio"
+      name={`location-${row.id}`}
+      value="International"
+      className="radio radio-primary"
+      checked={row.locationType === "International"}
+      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+    />
+    <span className="text-sm">International</span>
+  </label>
+</div>
+
 
                               </div>
                             </td>
