@@ -274,50 +274,16 @@ const handleSubmit = async (e) => {
     <option value="Computer Science and Engineering">Computer Science and Engineering</option>
     <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
     <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+    <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
+    <option value="Food Process Engineering">Food Process Engineering</option>
+    <option value="Genetic Engineering">Genetic Engineering</option>
     <option value="Information Technology">Information Technology</option>
     <option value="Mechanical Engineering">Mechanical Engineering</option>
     <option value="Mechatronics Engineering">Mechatronics Engineering</option>
     <option value="Software Engineering">Software Engineering</option>
   </optgroup>
-  <optgroup label="Science and Humanities">
-    <option value="Mathematics">Mathematics</option>
-    <option value="Physics and Nanotechnology">Physics and Nanotechnology</option>
-    <option value="Chemistry">Chemistry</option>
-    <option value="English">English</option>
-    <option value="Visual Communication">Visual Communication</option>
-    <option value="Journalism and Mass Communication">Journalism and Mass Communication</option>
-    <option value="Commerce">Commerce</option>
-    <option value="Economics">Economics</option>
-    <option value="Corporate Secretaryship">Corporate Secretaryship</option>
-  </optgroup>
-  <optgroup label="Management">
-    <option value="School of Management">School of Management</option>
-  </optgroup>
-  <optgroup label="Medicine and Health Sciences">
-    <option value="General Medicine">General Medicine</option>
-    <option value="Paediatrics">Paediatrics</option>
-    <option value="Psychiatry">Psychiatry</option>
-    <option value="Respiratory Medicine">Respiratory Medicine</option>
-    <option value="Dermatology">Dermatology</option>
-    <option value="Radio Diagnosis">Radio Diagnosis</option>
-    <option value="Anaesthesia">Anaesthesia</option>
-    <option value="Obstetrics & Gynaecology">Obstetrics & Gynaecology</option>
-    <option value="General Surgery">General Surgery</option>
-    <option value="Ophthalmology">Ophthalmology</option>
-    <option value="Orthopaedics">Orthopaedics</option>
-    <option value="Otolaryngology-Head & Neck Surgery (ENT)">Otolaryngology-Head & Neck Surgery (ENT)</option>
-    <option value="Physical Medicine and Rehabilitation">Physical Medicine and Rehabilitation</option>
-    <option value="Emergency Medicine">Emergency Medicine</option>
-    <option value="Transfusion Medicine and Blood Centre">Transfusion Medicine and Blood Centre</option>
-    <option value="Eye Bank">Eye Bank</option>
-  </optgroup>
-  <optgroup label="Law">
-    <option value="School of Law">School of Law</option>
-  </optgroup>
-  <optgroup label="Agricultural Sciences">
-    <option value="School of Agricultural Sciences">School of Agricultural Sciences</option>
-  </optgroup>
 </select>
+
 
                 </div>
 
