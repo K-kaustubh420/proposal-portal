@@ -272,6 +272,8 @@ const handleSubmit = async (e) => {
     <option value="Chemical Engineering">Chemical Engineering</option>
     <option value="Civil Engineering">Civil Engineering</option>
     <option value="Computer Science and Engineering">Computer Science and Engineering</option>
+    <option value="Ctech">Ctech</option>
+    <option value="Cintel">Cintel</option>
     <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
     <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
     <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
