@@ -1,7 +1,9 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { format } from 'date-fns';
 import { Line, Pie } from 'react-chartjs-2';
+import crypto from 'crypto';
 import { motion } from "framer-motion";
 import {
     Chart as ChartJS,
@@ -103,6 +105,8 @@ const lineData = {
     }],
 };
 
+
+//
 const pieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -136,6 +140,25 @@ interface Proposal {
     location?: string;
     convenerName: string;
     convenerEmail: string;
+    chiefGuestName?: string;
+    chiefGuestDesignation?: string;
+    designation: string;
+    detailedBudget: number;
+    durationEvent: string;
+    estimatedBudget: number;
+    eventDate: string;
+    eventDescription: string;
+    eventEndDate: string;
+    eventStartDate: string;
+    eventTitle: string;
+    fundingDetails?: string;
+    organizingDepartment: string;
+    pastEvents?: string[];
+    proposalStatus: string;
+    relevantDetails?: string;
+    sponsorshipDetails?: string;
+    sponsorshipDetailsRows?: any[];  // Assuming sponsorship details rows are structured data
+    submissionTimestamp: string;
 }
 
 // Dynamic imports for chart components
@@ -179,6 +202,9 @@ function YearlyDropdown() {
         <option value="Yearly">Yearly</option> {/* Added value attribute */}
         <option value="Monthly">Monthly</option> {/* Added value attribute */}
         <option value="Weekly">Weekly</option>   {/* Added value attribute */}
+        <option value="Quarterly">Quarterly</option> {/* Added Quarterly option */}
+        <option value="Semesterwise">Semesterwise</option> {/* Added Semesterwise option */}
+        <option value="AcademicYearly">Academic Yearly</option> {/* Added Academic Yearly option */}
     </select>
     );
 }
@@ -225,7 +251,7 @@ const DashboardContent: React.FC<{
 
     // Get recent proposals
     const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
-    const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice(-3).reverse();
+    const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice().reverse();
 
     // Render loading or no proposals component
     if (loading) {
@@ -373,31 +399,49 @@ const DashboardContent: React.FC<{
 
                                 {/* Recently Applied Proposals List */}
                                 <div className="card shadow-md rounded-lg bg-white">
-                                    <div className="card-body">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="card-title text-lg font-bold text-gray-700">Recently Applied Proposals</h2>
-                                            <a href="#" className="text-sm text-blue-500 hover:underline">See All Applied</a>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {recentAppliedProposals.map(proposal => (
-                                                <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} >
-                                                    <div className="flex items-center">
-                                                        <div className="avatar mr-3">
-                                                            <div className="mask mask-squircle w-8 h-8">
-                                                                <img src={`/avatar${(proposal.id + 1) % 3 + 1}.png`} alt="Avatar" />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-semibold text-gray-600">{proposal.organizer}</div>
-                                                            <div className="text-sm text-gray-500">{proposal.title}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : 'error'}`}>{proposal.status}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+            <div className="card-body">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="card-title text-lg font-bold text-gray-700">Recently Applied Proposals</h2>
+                    {/*<a href="#" className="text-sm text-blue-500 hover:underline">See All Applied</a>*/}
+                </div>
+                <div className="space-y-3">
+                    {recentAppliedProposals.map(proposal => (
+                        <div 
+                            key={proposal.id} 
+                            className="flex items-center justify-between cursor-pointer" 
+                            onClick={() => handleProposalClick(proposal)}
+                        >
+                            <div className="flex items-center">
+                                <div className="avatar mr-3">
+                                <div className="mask mask-squircle w-8 h-8">
+  {proposal.id % 3 === 0 ? (
+    <img 
+      src={`/avatar${(proposal.id % 3) + 1}.png`} 
+      onError={(e) => e.target.style.display = "none"} 
+      alt={proposal.title || "Avatar"} 
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
+      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+    </div>
+  )}
+</div>
+
                                 </div>
+                                <div>
+                                    <div className="font-semibold text-gray-600">{proposal.organizer}</div>
+                                    <div className="text-sm text-gray-500">{proposal.title}</div>
+                                </div>
+                            </div>
+                            <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : 'error'}`}>
+                                {proposal.status}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
 
                                 {/* Recently Approved Proposals List */}
                                 <div className="card shadow-md rounded-lg bg-white">
@@ -411,9 +455,21 @@ const DashboardContent: React.FC<{
                                                 <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} style={{ cursor: 'pointer' }}>
                                                     <div className="flex items-center">
                                                         <div className="avatar mr-3">
-                                                            <div className="mask mask-squircle w-8 h-8">
-                                                                <img src={`/avatar${proposal.id % 3 + 1}.png`} alt="Avatar" />
-                                                            </div>
+                                                        <div className="mask mask-squircle w-8 h-8">
+  {proposal.id % 3 === 0 ? (
+    <img 
+      src={`/avatar${(proposal.id % 3) + 1}.png`} 
+      onError={(e) => e.target.style.display = "none"} 
+      alt={proposal.title || "Avatar"} 
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
+      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+    </div>
+  )}
+</div>
+
                                                         </div>
                                                         <div>
                                                             <div className="font-semibold text-gray-600">{proposal.organizer}</div>
@@ -453,40 +509,142 @@ const DashboardContent: React.FC<{
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Title:</p>
-                                    <p className="text-gray-600">{selectedProposal.title}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Organizer:</p>
-                                    <p className="text-gray-600">{selectedProposal.organizer}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Date:</p>
-                                    <p className="text-gray-600">{selectedProposal.date}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Category:</p>
-                                    <p className="text-gray-600">{selectedProposal.category}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Description:</p>
-                                    <p className="text-gray-600">{selectedProposal.description}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Cost:</p>
-                                    <p className="text-gray-600">${selectedProposal.cost}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Email:</p>
-                                    <p className="text-gray-600">{selectedProposal.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-700 font-semibold">Status:</p>
-                                    <p className="text-gray-600">{selectedProposal.status}</p>
-                                </div>
-                            </div>
+                            <div className="space-y-4 overflow-y-auto max-h-[500px]">
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+    <div>
+        <p className="text-gray-700 font-semibold">Title:</p>
+        <p className="text-gray-600">{selectedProposal.title}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Organizer:</p>
+        <p className="text-gray-600">{selectedProposal.organizer}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Date:</p>
+        <p className="text-gray-600">{format(new Date(selectedProposal.date), 'dd-MM-yyyy hh:mm a')}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Status:</p>
+        <p className="text-gray-600">{selectedProposal.status}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Category:</p>
+        <p className="text-gray-600">{selectedProposal.category}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Cost:</p>
+        <p className="text-gray-600">{selectedProposal.cost ? `$${selectedProposal.cost.toLocaleString()}` : 'N/A'}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Email:</p>
+        <p className="text-gray-600">{selectedProposal.email}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Convener:</p>
+        <p className="text-gray-600">{selectedProposal.convenerName} ({selectedProposal.convenerEmail})</p>
+    </div>
+    {selectedProposal.chiefGuestName && (
+        <div>
+            <p className="text-gray-700 font-semibold">Chief Guest:</p>
+            <p className="text-gray-600">{selectedProposal.chiefGuestName} ({selectedProposal.chiefGuestDesignation})</p>
+        </div>
+    )}
+    {selectedProposal.designation && (
+        <div>
+            <p className="text-gray-700 font-semibold">Designation:</p>
+            <p className="text-gray-600">{selectedProposal.designation}</p>
+        </div>
+    )}
+    <div>
+        <p className="text-gray-700 font-semibold">Duration:</p>
+        <p className="text-gray-600">{selectedProposal.durationEvent}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">Start Date:</p>
+        <p className="text-gray-600">{format(new Date(selectedProposal.eventStartDate), 'dd-MM-yyyy hh:mm a')}</p>
+    </div>
+    <div>
+        <p className="text-gray-700 font-semibold">End Date:</p>
+        <p className="text-gray-600">{format(new Date(selectedProposal.eventEndDate), 'dd-MM-yyyy hh:mm a')}</p>
+    </div>
+    <div className="col-span-2">
+        <p className="text-gray-700 font-semibold">Description:</p>
+        <p className="text-gray-600">{selectedProposal.description}</p>
+    </div>
+</div>
+
+{selectedProposal.pastEvents && (
+    <div className="mt-4 p-4 rounded-md">
+        <p className="text-gray-700 font-semibold">Past Events:</p>
+        <p className="text-gray-600 whitespace-pre-wrap">{selectedProposal.pastEvents}</p>
+    </div>
+)}
+
+{selectedProposal.relevantDetails && (
+    <div className="mt-4 p-4 rounded-md">
+        <p className="text-gray-700 font-semibold">Relevant Details:</p>
+        <p className="text-gray-600 whitespace-pre-wrap">{selectedProposal.relevantDetails}</p>
+    </div>
+)}
+
+{selectedProposal.sponsorshipDetails && Array.isArray(selectedProposal.sponsorshipDetails) && (
+    <div className="mt-4 p-4 rounded-md">
+        <p className="text-gray-700 font-semibold">Sponsorship Details:</p>
+        <ul className="text-gray-600 list-disc list-inside">
+            {selectedProposal.sponsorshipDetails.map((sponsor, index) => (
+                <li key={index}>{sponsor}</li>
+            ))}
+        </ul>
+    </div>
+)}
+
+{selectedProposal.detailedBudget && selectedProposal.detailedBudget.length > 0 && (
+    <div className="mt-4  p-4 rounded-md">
+        <p className="text-gray-700 font-semibold">Detailed Budget:</p>
+        <ul className="list-disc list-inside text-gray-600">
+            {selectedProposal.detailedBudget.map((item, index) => (
+                <li key={index}>
+                    {item.mainCategory} - {item.subCategory} (${item.totalAmount.toLocaleString()})
+                </li>
+            ))}
+        </ul>
+    </div>
+)}
+
+{selectedProposal.fundingDetails && (
+    <div className="mt-4  p-4 rounded-md">
+        <p className="text-gray-700 font-semibold">Funding Details:</p>
+        <ul className="list-disc list-inside text-gray-600">
+            {selectedProposal.fundingDetails.registrationFund && (
+                <li><span className="font-semibold">Registration Fund:</span> ${selectedProposal.fundingDetails.registrationFund}</li>
+            )}
+            {selectedProposal.fundingDetails.sponsorshipFund && (
+                <li><span className="font-semibold">Sponsorship Fund:</span> ${selectedProposal.fundingDetails.sponsorshipFund}</li>
+            )}
+            {selectedProposal.fundingDetails.universityFund && (
+                <li><span className="font-semibold">University Fund:</span> ${selectedProposal.fundingDetails.universityFund}</li>
+            )}
+            {selectedProposal.fundingDetails.otherSourcesFund && (
+                <li><span className="font-semibold">Other Sources:</span> ${selectedProposal.fundingDetails.otherSourcesFund}</li>
+            )}
+        </ul>
+        {!selectedProposal.fundingDetails.registrationFund &&
+        !selectedProposal.fundingDetails.sponsorshipFund &&
+        !selectedProposal.fundingDetails.universityFund &&
+        !selectedProposal.fundingDetails.otherSourcesFund && (
+            <p className="text-gray-600">No funding details available</p>
+        )}
+    </div>
+)}
+
+{selectedProposal.submissionTimestamp && (
+    <div className="mt-4">
+        <p className="text-gray-700 font-semibold">Submitted On:</p>
+        <p className="text-gray-600">{format(new Date(selectedProposal.submissionTimestamp), 'dd-MM-yyyy hh:mm a')}</p>
+    </div>
+)}
+</div>
+
 
                             <div className="mt-6 flex justify-end space-x-2">
                                 {selectedProposal.status !== 'Approved' && (
@@ -542,18 +700,32 @@ export default function EventPortal() {
                 const data = doc.data();
                 return {
                     id: doc.id,
-                    title: data.eventTitle,
-                    organizer: data.organizingDepartment,
-                    date: data.eventDate,
-                    status: data.proposalStatus || 'Pending',
-                    category: data.category,
-                    cost: data.estimatedBudget,
-                    email: data.convenerEmail,
-                    description: data.eventDescription,
-                    location: data.eventLocation,
-                    convenerName: data.convenerName,
-                    convenerEmail: data.convenerEmail,
-                    ...data,
+    title: data.eventTitle,
+    organizer: data.organizingDepartment,
+    date: data.eventDate,
+    status: data.proposalStatus || 'Pending',
+    category: data.category,
+    cost: data.estimatedBudget,
+    email: data.convenerEmail,
+    description: data.eventDescription,
+    location: data.eventLocation,
+    convenerName: data.convenerName,
+    convenerEmail: data.convenerEmail,
+    chiefGuestName: data.chiefGuestName,
+    chiefGuestDesignation: data.chiefGuestDesignation,
+    designation: data.designation,
+    detailedBudget: data.detailedBudget,
+    durationEvent: data.durationEvent,
+    estimatedBudget: data.estimatedBudget,
+    eventEndDate: data.eventEndDate,
+    eventStartDate: data.eventStartDate,
+    fundingDetails: data.fundingDetails,
+    pastEvents: data.pastEvents,
+    relevantDetails: data.relevantDetails,
+    sponsorshipDetails: data.sponsorshipDetails,
+    sponsorshipDetailsRows: data.sponsorshipDetailsRows,
+    submissionTimestamp: data.submissionTimestamp,
+    ...data,
                 };
             });
             setEventProposals(proposalsList);
