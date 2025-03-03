@@ -250,7 +250,7 @@ const DashboardContent: React.FC<{
     };
 
     // Get recent proposals
-    const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
+    const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice().reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice().reverse();
 
     // Render loading or no proposals component
