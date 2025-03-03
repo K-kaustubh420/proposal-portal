@@ -358,7 +358,7 @@ const DashboardContent: React.FC<{
                                                         ))
                                                     ) : (
                                                         <tr>
-                                                            <td colSpan={5} className="text-center italic">No proposals submitted yet. <a href="/create-proposal" className="text-blue-500 hover:underline">Create a proposal now?</a></td>
+                                                            <td colSpan={5} className="text-center italic">No proposals submitted yet.</td>
                                                         </tr>
                                                     )}
                                                 </tbody>
