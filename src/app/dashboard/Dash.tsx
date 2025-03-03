@@ -360,7 +360,7 @@ const DashboardContent: React.FC<{
                                                 </thead>
                                                 <tbody>
                                                     {eventProposals.map((proposal) => (
-                                                        <tr key={proposal.id}>
+                                                        <tr onClick={() => handleProposalClick(proposal)} key={proposal.id}>
                                                             <td>{proposal.title}</td>
                                                             <td>{proposal.organizer}</td>
                                                             <td>{proposal.convenerName}</td>
@@ -382,10 +382,10 @@ const DashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
-                                            <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
+                                           {/* <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
                                                 <Info className="w-3.5 h-3.5" aria-hidden="true" color="currentColor" />
                                                 <span className="sr-only">Tooltip</span>
-                                            </button>
+                                            </button> */}
                                             <div id="data-tooltip-pie" role="tooltip" className="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-gray-900 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 tooltip dark:bg-slate-200">
                                                 Status of event proposals
                                                 <div className="tooltip-arrow bg-white" data-popper-arrow></div>
@@ -443,7 +443,7 @@ const DashboardContent: React.FC<{
             </div>
         </div>
 
-                                {/* Recently Approved Proposals List */}
+                                {/* Recently Approved Proposals List 
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
@@ -481,7 +481,7 @@ const DashboardContent: React.FC<{
                                             ))}
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
                             </div>
                         </div>
                     </div>
@@ -496,7 +496,7 @@ const DashboardContent: React.FC<{
     transition={{ duration: 0.5 }}
 >
  <motion.div
-     className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-md w-full"
+     className="bg-blue-50 rounded-lg border-t-4 border-blue-800 shadow-md shadow-blue-950 p-8 max-w-2xl w-full"
      initial={{ y: 50, opacity: 0 }}
      animate={{ y: 0, opacity: 1 }}
      exit={{ y: 50, opacity: 0 }}

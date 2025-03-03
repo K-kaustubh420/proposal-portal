@@ -228,8 +228,8 @@ const MyDashboardContent: React.FC<{
     };
 
     // Get recent proposals - User specific
-    const recentAppliedProposals = userProposals.filter(p => p.status === 'Pending').slice(-3).reverse();
-    const recentApprovedProposals = userProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
+    const recentAppliedProposals = userProposals.filter(p => p.status === 'Pending').slice().reverse();
+    const recentApprovedProposals = userProposals.filter(p => p.status === 'Approved').slice().reverse();
 
     // Render loading or no proposals component
     if (loading) {
@@ -338,12 +338,12 @@ const MyDashboardContent: React.FC<{
                                                 </thead>
                                                 <tbody>
                                                     {userProposals.map((proposal) => (
-                                                        <tr key={proposal.id}>
-                                                            <td>{proposal.title}</td>
-                                                            <td>{proposal.organizer}</td>
-                                                            <td>{proposal.convenerName}</td>
-                                                            <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
-                                                            <td>
+                                                        <tr key={proposal.id} onClick={() => handleProposalClick(proposal)}>
+                                                            <td >{proposal.title}</td>
+                                                            <td >{proposal.organizer}</td>
+                                                            <td >{proposal.convenerName}</td>
+                                                            <td >{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
+                                                            <td >
                                                                 <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : proposal.status === 'Rejected' ? 'error' : proposal.status === 'Review' ? 'info' : ''}`}>{proposal.status}</div>
                                                             </td>
                                                         </tr>
@@ -360,10 +360,10 @@ const MyDashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
-                                            <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
+                                           {/* <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
                                                 <Info className="w-3.5 h-3.5" aria-hidden="true" color="currentColor" />
                                                 <span className="sr-only">Tooltip</span>
-                                            </button>
+                                            </button> */}
                                             <div id="data-tooltip-pie" role="tooltip" className="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-gray-900 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 tooltip dark:bg-slate-200">
                                                 Status of your event proposals
                                                 <div className="tooltip-arrow bg-white" data-popper-arrow></div>
@@ -380,7 +380,7 @@ const MyDashboardContent: React.FC<{
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="card-title text-lg font-bold text-gray-700">Recently Applied Proposals</h2>
-                                            <a href="#" className="text-sm text-blue-500 hover:underline">See All Applied</a>
+                            
                                         </div>
                                         <div className="space-y-3">
                                             {recentAppliedProposals.map(proposal => (
@@ -415,12 +415,12 @@ const MyDashboardContent: React.FC<{
                                     </div>
                                 </div>
 
-                                {/* Recently Approved Proposals List - User specific */}
+                                {/* Recently Approved Proposals List - User specific 
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="card-title text-lg font-bold text-gray-700">Recently Approved Proposals</h2>
-                                            <a href="#" className="text-sm text-blue-500 hover:underline">See All Approved</a>
+                                            
                                         </div>
                                         <div className="space-y-3">
                                             {recentApprovedProposals.map(proposal => (
@@ -453,7 +453,7 @@ const MyDashboardContent: React.FC<{
                                             ))}
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
                             </div>
                         </div>
                     </div>
