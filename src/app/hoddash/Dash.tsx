@@ -25,9 +25,10 @@ import {
     X
 } from 'lucide-react';
 import { db, auth, app } from '@/firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
+// ... (rest of your imports and chart setup - same as before) ...
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -158,6 +159,8 @@ interface Proposal {
     sponsorshipDetails?: string;
     sponsorshipDetailsRows?: any[];
     submissionTimestamp: string;
+	rejectionMessage?: string;
+    reviewMessage?: string;
 }
 
 // Dynamic imports for chart components
@@ -202,7 +205,6 @@ function YearlyDropdown() {
         </select>
     );
 }
-
 // Dashboard content component
 const DashboardContent: React.FC<{
     eventProposals: Proposal[];
@@ -210,12 +212,14 @@ const DashboardContent: React.FC<{
     selectedProposal: Proposal | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
+    handleUpdateStatus: (proposal: Proposal, newStatus: string) => Promise<void>; // Add handleUpdateStatus prop
 }> = ({
     eventProposals,
     loading,
     selectedProposal,
     handleProposalClick,
     closePopup,
+    handleUpdateStatus, // Receive handleUpdateStatus
 }) => {
 
     // Calculate proposal counts
@@ -591,7 +595,27 @@ const DashboardContent: React.FC<{
                                 )}
                             </div>
 
-
+                            {/* Action Buttons */}
+                            <div className="flex space-x-4 mt-6">
+                                <button
+                                    onClick={() => handleUpdateStatus(selectedProposal, 'Approved')}
+                                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-300"
+                                >
+                                    Accept
+                                </button>
+                                <button
+                                    onClick={() => handleUpdateStatus(selectedProposal, 'Review')}
+                                    className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition duration-300"
+                                >
+                                    Review
+                                </button>
+                                <button
+                                    onClick={() => handleUpdateStatus(selectedProposal, 'Rejected')}
+                                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-300"
+                                >
+                                    Reject
+                                </button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
@@ -599,13 +623,15 @@ const DashboardContent: React.FC<{
         </>
     );
 };
-
 // Main EventPortal component
 export default function EventPortal() {
     const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
     const [userDepartment, setUserDepartment] = useState<string | null>(null);
+    const [rejectionMessage, setRejectionMessage] = useState('');  // State for rejection message
+    const [reviewMessage, setReviewMessage] = useState('');        //State for review message
+
 
     const hodEmailDepartmentMap: { [key: string]: string } = {
         "hod.ctech.ktr.et@srmist.edu.in": "Ctech", // Use "Ctech" to match option value
@@ -661,6 +687,8 @@ export default function EventPortal() {
                     sponsorshipDetails: data.sponsorshipDetails,
                     sponsorshipDetailsRows: data.sponsorshipDetailsRows,
                     submissionTimestamp: data.submissionTimestamp,
+					rejectionMessage: data.rejectionMessage,
+                    reviewMessage: data.reviewMessage,
                     ...data,
                 };
             });
@@ -698,20 +726,80 @@ export default function EventPortal() {
     // Handlers for proposal actions
     const handleProposalClick = useCallback((proposal: Proposal) => {
         setSelectedProposal(proposal);
+        setRejectionMessage(''); // Reset message on proposal click
+        setReviewMessage('');
     }, []);
 
-    const closePopup = useCallback(() => {
-        setSelectedProposal(null);
-    }, []);
-
-
-    return (
-        <DashboardContent
-            eventProposals={eventProposals}
-            loading={loading}
-            selectedProposal={selectedProposal}
-            handleProposalClick={handleProposalClick}
-            closePopup={closePopup}
-        />
-    );
-}
+    const closePopup = useCallback(() =>
+        {
+            setSelectedProposal(null);
+        }, []);
+    
+        const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string) => {
+            if (!proposal) return;
+    
+            let message = '';
+            if (newStatus === 'Rejected') {
+                message = prompt("Please enter the reason for rejection:") || '';
+                if (!message) return; // Cancel update if no message is entered
+            }
+            else if (newStatus === 'Review') {
+                message = prompt("Please enter comments for review:") || '';
+                if (!message) return; // Cancel the update if no message is entered
+            }
+            try {
+                const proposalRef = doc(db, 'eventProposals', proposal.id);
+                await updateDoc(proposalRef, {
+                    proposalStatus: newStatus,
+                    ...(newStatus === 'Rejected' && { rejectionMessage: message }),
+                    ...(newStatus === 'Review' && { reviewMessage: message }),
+                });
+                console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
+    
+                // Send email via API
+                const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
+                console.log('Sending update request to /api/sendmail...', updatedProposal);
+    
+                const response = await fetch('/api/sendmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
+                });
+    
+                console.log('API response status:', response.status);
+                const data = await response.json();
+                console.log('API response data:', data);
+    
+    
+                if (data.error) {
+                    throw new Error(data.error); // Correctly throw the error
+                }
+    
+                // Update local state to reflect changes *after* successful DB update and email
+                setEventProposals(prevProposals =>
+                    prevProposals.map(p =>
+                        p.id === proposal.id ? { ...p, status: newStatus, rejectionMessage: message, reviewMessage:message } : p  //Important: update the local state of rejection/review message
+                    )
+                );
+                setSelectedProposal(null); // Close the popup
+                alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
+    
+            } catch (error: any) {
+                console.error("Error updating proposal status:", error);
+                alert(`Error updating proposal status: ${error.message}`);
+    
+            }
+        }, [setEventProposals]); // Add setEventProposals as a dependency
+    
+    
+        return (
+            <DashboardContent
+                eventProposals={eventProposals}
+                loading={loading}
+                selectedProposal={selectedProposal}
+                handleProposalClick={handleProposalClick}
+                closePopup={closePopup}
+                handleUpdateStatus={handleUpdateStatus} // Pass handleUpdateStatus
+            />
+        );
+    }
