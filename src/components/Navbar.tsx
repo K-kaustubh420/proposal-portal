@@ -46,7 +46,10 @@ const Navbar = () => {
       "kkaustubh92@gmail.com",
       "kk6682@srmist.edu.in",
       "kn3959@srmist.edu.in",
-      "neupanekiran512@gmail.com"
+      "neupanekiran512@gmail.com", 
+      "neupanekiran450@gmail.com",
+      "namasteportraits@gmailcom",
+      "rn8638@srmist.edu.in"
     ];
     return exceptionEmails.includes(email);
   };

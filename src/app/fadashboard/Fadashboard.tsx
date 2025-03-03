@@ -89,7 +89,7 @@ const lineData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
         label: 'Monthly Submissions',
-        data: [60, 55, 40, 85, 64, 70, 94, 34, 78, 54, 76, 56], // Demo data - will be replaced
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // Initialized to zeros
         borderColor: '#3b82f6',
         borderWidth: 3,
         fill: true,
@@ -160,11 +160,12 @@ const LoadingComponent = () => (
     </div>
 );
 
-const NoProposalsComponent = () => (
-    <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
-        No proposals available for you.
-    </div>
-);
+// ** NoProposalsComponent is no longer directly used in conditional rendering **
+// const NoProposalsComponent = () => (
+//     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
+//         No proposals available for you.
+//     </div>
+// );
 
 // Yearly dropdown component (reusing from EventPortal)
 function YearlyDropdown() {
@@ -236,9 +237,10 @@ const MyDashboardContent: React.FC<{
         return <LoadingComponent />;
     }
 
-    if (userProposals.length === 0) {
-        return <NoProposalsComponent />;
-    }
+    // ** REMOVED CONDITIONAL RENDERING FOR "NO PROPOSALS AVAILABLE" HERE **
+    // if (userProposals.length === 0) {
+    //     return <NoProposalsComponent />;
+    // }
 
     return (
         <>
@@ -303,7 +305,7 @@ const MyDashboardContent: React.FC<{
                                             <p className="text-base font-normal text-gray-700">Your Proposals this year</p>
                                         </div>
                                         <div className="flex items-center px-2.5 py-0.5 text-base font-semibold text-green-800 bg-green-100 rounded-full">
-                                            +{(approvedProposalsCount / totalProposalsCount * 100).toFixed(1)}%
+                                            +{(totalProposalsCount > 0 ? (approvedProposalsCount / totalProposalsCount * 100).toFixed(1) : 0)}%
                                             <ArrowUpRight className="w-3 h-3 ms-1" aria-hidden="true" color="currentColor" />
                                         </div>
                                     </div>
@@ -337,17 +339,23 @@ const MyDashboardContent: React.FC<{
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {userProposals.map((proposal) => (
-                                                        <tr key={proposal.id} onClick={() => handleProposalClick(proposal)}>
-                                                            <td >{proposal.title}</td>
-                                                            <td >{proposal.organizer}</td>
-                                                            <td >{proposal.convenerName}</td>
-                                                            <td >{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
-                                                            <td >
-                                                                <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : proposal.status === 'Rejected' ? 'error' : proposal.status === 'Review' ? 'info' : ''}`}>{proposal.status}</div>
-                                                            </td>
+                                                    {userProposals.length > 0 ? (
+                                                        userProposals.map((proposal) => (
+                                                            <tr key={proposal.id} onClick={() => handleProposalClick(proposal)}>
+                                                                <td >{proposal.title}</td>
+                                                                <td >{proposal.organizer}</td>
+                                                                <td >{proposal.convenerName}</td>
+                                                                <td >{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
+                                                                <td >
+                                                                    <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : proposal.status === 'Rejected' ? 'error' : proposal.status === 'Review' ? 'info' : ''}`}>{proposal.status}</div>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={5} className="text-center italic">No proposals submitted yet. <Link href="/Proposal" className="text-blue-500 hover:underline">Create a proposal now?</Link></td>
                                                         </tr>
-                                                    ))}
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -380,47 +388,51 @@ const MyDashboardContent: React.FC<{
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="card-title text-lg font-bold text-gray-700">Recently Applied Proposals</h2>
-                            
+
                                         </div>
                                         <div className="space-y-3">
-                                            {recentAppliedProposals.map(proposal => (
-                                                <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} >
-                                                    <div className="flex items-center">
-                                                        <div className="avatar mr-3">
-                                                        <div className="mask mask-squircle w-8 h-8">
-  {proposal.id % 3 === 0 ? (
-    <img 
-      src={`/avatar${(proposal.id % 3) + 1}.png`} 
-      onError={(e) => e.target.style.display = "none"} 
-      alt={proposal.title || "Avatar"} 
-      className="w-full h-full object-cover"
-    />
-  ) : (
-    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
-      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
-    </div>
-  )}
-</div>
+                                            {recentAppliedProposals.length > 0 ? (
+                                                recentAppliedProposals.map(proposal => (
+                                                    <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} >
+                                                        <div className="flex items-center">
+                                                            <div className="avatar mr-3">
+                                                                <div className="mask mask-squircle w-8 h-8">
+                                                                    {proposal.id % 3 === 0 ? (
+                                                                        <img
+                                                                            src={`/avatar${(proposal.id % 3) + 1}.png`}
+                                                                            onError={(e) => e.target.style.display = "none"}
+                                                                            alt={proposal.title || "Avatar"}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
+                                                                            <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
 
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-semibold text-gray-600">{proposal.organizer}</div>
+                                                                <div className="text-sm text-gray-500">{proposal.title}</div>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <div className="font-semibold text-gray-600">{proposal.organizer}</div>
-                                                            <div className="text-sm text-gray-500">{proposal.title}</div>
-                                                        </div>
+                                                        <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : 'error'}`}>{proposal.status}</div>
                                                     </div>
-                                                    <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : 'error'}`}>{proposal.status}</div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            ) : (
+                                                <p className="text-center italic text-gray-500">No recent proposals.</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Recently Approved Proposals List - User specific 
+                                {/* Recently Approved Proposals List - User specific
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="card-title text-lg font-bold text-gray-700">Recently Approved Proposals</h2>
-                                            
+
                                         </div>
                                         <div className="space-y-3">
                                             {recentApprovedProposals.map(proposal => (
@@ -429,10 +441,10 @@ const MyDashboardContent: React.FC<{
                                                         <div className="avatar mr-3">
                                                         <div className="mask mask-squircle w-8 h-8">
   {proposal.id % 3 === 0 ? (
-    <img 
-      src={`/avatar${(proposal.id % 3) + 1}.png`} 
-      onError={(e) => e.target.style.display = "none"} 
-      alt={proposal.title || "Avatar"} 
+    <img
+      src={`/avatar${(proposal.id % 3) + 1}.png`}
+      onError={(e) => e.target.style.display = "none"}
+      alt={proposal.title || "Avatar"}
       className="w-full h-full object-cover"
     />
   ) : (
@@ -548,7 +560,7 @@ export default function MyDashboard() {
                 setCurrentUserEmail(user.email); // Set current user email
             } else {
                 setCurrentUserEmail(null);
-              
+
             }
         });
 
@@ -559,11 +571,16 @@ export default function MyDashboard() {
     // Fetch proposals from Firebase and filter by user email
     const fetchUserProposals = useCallback(async (userEmail) => { // Accept userEmail as argument
         setLoading(true);
+        console.log("fetchUserProposals: Starting data fetch for user:", userEmail); // ADDED LOG
         try {
             const proposalsCollection = collection(db, 'eventProposals');
+            console.log("fetchUserProposals: Collection reference created."); // ADDED LOG
             // Create a query to filter proposals by convenerEmail and now use userEmail
             const q = query(proposalsCollection, where("convenerEmail", "==", userEmail));
+            console.log("fetchUserProposals: Query created:", q); // ADDED LOG
             const proposalSnapshot = await getDocs(q);
+            console.log("fetchUserProposals: Snapshot received:", proposalSnapshot); // ADDED LOG
+            console.log("fetchUserProposals: Snapshot is empty?", proposalSnapshot.empty); // ADDED LOG
             const filteredProposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
@@ -583,11 +600,14 @@ export default function MyDashboard() {
                 };
             }) as Proposal[]; // Type assertion to Proposal[]
 
+            console.log("fetchUserProposals: Filtered Proposals List:", filteredProposalsList); // ADDED LOG
             setUserProposals(filteredProposalsList);
             setLoading(false);
+            console.log("fetchUserProposals: Data fetch complete, user proposals set."); // ADDED LOG
         } catch (error) {
-            console.error("Error fetching proposals:", error);
+            console.error("fetchUserProposals: Error fetching proposals:", error);
             setLoading(false);
+            console.log("fetchUserProposals: Data fetch failed."); // ADDED LOG
         }
     }, []); // Removed currentUserEmail from dependency array
 
@@ -597,6 +617,7 @@ export default function MyDashboard() {
         } else {
             setUserProposals([]); // Clear proposals if no user email
             setLoading(false); // Stop loading
+            console.log("useEffect: No currentUserEmail, proposals cleared."); // ADDED LOG
         }
     }, [fetchUserProposals, currentUserEmail]); // Add currentUserEmail as dependency
 

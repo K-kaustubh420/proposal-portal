@@ -598,9 +598,9 @@ useEffect(() => {
         id="convener-email"
         value={convenerEmail}
         onChange={(e) => setConvenerEmail(e.target.value)}
-        className="border bg-transparent p-2 rounded w-full"
+        className="border bg-transparent p-2 text-black rounded w-full"
         readOnly
-      />
+       / >
       {/* Other parts of your component */}
     </div>
                 <div>
