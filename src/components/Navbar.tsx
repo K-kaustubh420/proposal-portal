@@ -2,7 +2,7 @@
 import { RxCross2 } from "react-icons/rx";
 import { useState, useEffect } from 'react';
 import { FaGoogle } from "react-icons/fa";
-import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { app } from '@/firebase/config';
 import Image from 'next/image';
@@ -13,7 +13,7 @@ const Navbar = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
   const [loginError, setLoginError] = useState(null);
   const [user, setUser] = useState(null);
   const [isClient, setIsClient] = useState(false);
@@ -23,65 +23,98 @@ const Navbar = () => {
     const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && pathname === '/') { // Conditionally redirect only if pathname is '/' (homepage)
-        router.push('/fadashboard');
+      if (currentUser) {
+        routeUser(currentUser.email); // Route user after login
       }
     });
     return () => unsubscribe();
-  }, [pathname, router]); // Add pathname to dependency array
+  }, [router]); // Removed pathname dependency
 
-  useEffect(() => {
-    if (isClient && user) {
-      // No need for router.push here anymore, handled in the onAuthStateChanged useEffect
-    }
-  }, [isClient, user, router]);
+    useEffect(() => {
+        if (isClient && user && user.email) {
+          routeUser(user.email);
+        }
+    }, [isClient, user, router]);
 
   const toggleLoginPopup = () => {
     setIsLoginPopupOpen(!isLoginPopupOpen);
     setLoginError(null);
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      setLoginError(null);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+  const isExceptionEmail = (email: string) => {
+    const exceptionEmails = [
+      "kkaustubh92@gmail.com",
+      "kk6682@srmist.edu.in",
+      "kn3959@srmist.edu.in",
+      "neupanekiran512@gmail.com"
+    ];
+    return exceptionEmails.includes(email);
+  };
 
-      if (!user.email?.endsWith('@srmist.edu.in')) {
-        await signOut(auth);
-        setIsLoginPopupOpen(true);
-        setLoginError("Only SRMIST email addresses are allowed to sign in using Google.");
-        return;
-      }
+  const routeUser = (email: string | null | undefined) => {
+    if (!email) return;
 
-      setIsLoginPopupOpen(false);
-      router.push('/fadashboard'); // Redirect after successful Google login
-    } catch (error: any) {
-      console.error("Error signing in with Google", error);
-      setLoginError(error.message);
+    if (isExceptionEmail(email)) {
+        return; // Exception emails can access any route
+    }
+
+    if (!email.endsWith('@srmist.edu.in')) {
+        return; // Do not redirect if it is not srm email
+    }
+
+    const emailRegex = /^[a-z]{2}[0-9]{2}@srmist\.edu\.in$/;
+    if (emailRegex.test(email)) {
+        return; // Do not redirect if it matches student email pattern
+    }
+
+    if (email.startsWith('hod.')) {
+      router.push('/dashboard'); // HOD route
+    } else {
+      router.push('/fadashboard'); // Faculty route
     }
   };
+
+    const signInWithGoogle = async () => {
+        try {
+            setLoginError(null);
+            const auth = getAuth(app);
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            if (!user.email?.endsWith('@srmist.edu.in') && !isExceptionEmail(user.email || '')) {
+                await signOut(auth);
+                setIsLoginPopupOpen(true);
+                setLoginError("Only SRMIST email addresses are allowed to sign in using Google, with some exceptions.");
+                return;
+            }
+             setIsLoginPopupOpen(false);
+
+
+        } catch (error: any) {
+            console.error("Error signing in with Google", error);
+            setLoginError(error.message);
+        }
+    };
+
 
   const signInWithEmailPassword = async (e) => {
     e.preventDefault();
     setLoginError(null);
 
-    if (!email.endsWith('@srmist.edu.in')) {
-      setLoginError("Only SRMIST email addresses are allowed.");
+    if (!email.endsWith('@srmist.edu.in') && !isExceptionEmail(email)) {
+      setLoginError("Only SRMIST email addresses are allowed, with some exceptions.");
       return;
     }
+     try {
+            const auth = getAuth(app);
+            await signInWithEmailAndPassword(auth, email, password);
+            setIsLoginPopupOpen(false);
 
-    try {
-      const auth = getAuth(app);
-      await signInWithEmailAndPassword(auth, email, password);
-      setIsLoginPopupOpen(false);
-      router.push('/fadashboard'); // Redirect after successful email/password login
-    } catch (error: any) {
-      console.error("Error signing in with email and password", error);
-      setLoginError(error.message);
-    }
+        } catch (error: any) {
+            console.error("Error signing in with email and password", error);
+            setLoginError(error.message);
+        }
   };
 
   const handleLogout = async () => {
@@ -104,9 +137,21 @@ const Navbar = () => {
           </div>
         </Link>
       </div>
-      <div className="flex-none">
+       <div className="flex-none">
+        {/* Added Proposal and Dashboard Links */}
+        {user && (
+          <>
+            <Link href="/Proposal" className="btn btn-ghost">
+              Proposal
+            </Link>
+            <Link href={user.email && user.email.startsWith('hod.') ? '/dashboard' : '/fadashboard'} className="btn btn-ghost">
+              Dashboard
+            </Link>
+          </>
+        )}
+
         {user ? (
-          <div className="dropdown dropdown-end">
+           <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
               <div className="w-10 rounded-full">
                 {user.photoURL && (

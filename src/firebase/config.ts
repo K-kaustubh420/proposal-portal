@@ -1,6 +1,7 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC7kbV9nBUWucwOawpGf9KJtwsTikBdil4",
@@ -13,25 +14,12 @@ const firebaseConfig = {
   measurementId: "G-EG7YYGCLS4"
 };
 
-let analytics; // Declare analytics outside the conditional block
-let app;      // Declare app outside the conditional block
-let db;       // Declare db outside the conditional block
+// Prevent multiple instances
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-if (typeof window !== 'undefined') { // Check if window is defined (browser environment)
-  app = initializeApp(firebaseConfig);
-  analytics = getAnalytics(app);
-  db = getFirestore(app);
-} else {
-  // You are in a server-side environment (e.g., during build or SSR)
-  // You might not need analytics or Firestore initialized here,
-  // or you might have server-side Firebase setup.
-  console.warn("Firebase Analytics and Firestore not initialized on server-side.");
+// Firebase Services
+const db = getFirestore(app);
+const auth = getAuth(app);
+const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
 
-  // If you DO need Firestore server-side (for some specific purpose), you can initialize Firestore only:
-   const app = initializeApp(firebaseConfig); // You might still need to initialize the app for server-side Firestore
-  const db = getFirestore(app); // Initialize Firestore -  ensure your Firebase config is suitable for server-side if needed.
-  const analytics = null; // Set analytics to null as it's not available server-side
-}
-
-
-export { app, analytics, db };
+export { app, db, auth, analytics };

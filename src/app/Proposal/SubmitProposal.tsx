@@ -6,9 +6,11 @@ import { Trash2 } from 'lucide-react';
 import { db } from '@/firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
 import { FaCalendarAlt } from "react-icons/fa";
+import { useAuth } from "@/context/AuthContext";
 
 
 export default function EventProposalForm() {
+  const { user } = useAuth(); // Get the logged-in user
   // Initialize startDate to null initially
   const [startDate, setStartDate] = useState<Date | null>(null);
 
@@ -239,6 +241,12 @@ const handleSubmit = async (e) => {
 useEffect(() => {
   setEstimatedBudget(totalDetailedBudget);
 }, [totalDetailedBudget]);
+// Set default email when user logs in
+useEffect(() => {
+  if (user?.email) {
+    setConvenerEmail(user.email);
+  }
+}, [user]); // Runs when user changes
   return (
     <>
       <div style={{
@@ -442,15 +450,21 @@ useEffect(() => {
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="designation">
                     Designation
                   </label>
-                  <input
-                    type="text"
-                    id="designation"
-                    placeholder="e.g., Professor, Student Coordinator"
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    required
-                  />
+                  <select
+  id="designation"
+  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+  value={designation}
+  onChange={(e) => setDesignation(e.target.value)}
+  required
+>
+  <option value="" disabled>Select your designation</option>
+  <option value="Professor">Professor</option>
+  <option value="Assistant Professor">Assistant Professor</option>
+  <option value="Associate Professor">Associate Professor</option>
+  <option value="HOD">HOD (Head of Department)</option>
+  <option value="Dean">Dean</option>
+</select>
+
                 </div>
 
                 
@@ -573,19 +587,22 @@ useEffect(() => {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="convener-email">
-                    Convener Email
-                  </label>
-                  <input
-                    type="email"
-                    id="convener-email"
-                    placeholder="Enter Your Email Address"
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                    value={convenerEmail}
-                    onChange={(e) => setConvenerEmail(e.target.value)}
-                    required
-                  />
-                </div>
+      <label
+        className="block text-gray-700 bg-white text-sm font-bold mb-2"
+        htmlFor="convener-email"
+      >
+        Convener Email
+      </label>
+      <input
+        type="email"
+        id="convener-email"
+        value={convenerEmail}
+        onChange={(e) => setConvenerEmail(e.target.value)}
+        className="border bg-transparent p-2 rounded w-full"
+        readOnly
+      />
+      {/* Other parts of your component */}
+    </div>
                 <div>
   <label
     className="block text-gray-700 bg-white text-sm font-bold mb-2"
