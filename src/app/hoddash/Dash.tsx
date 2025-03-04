@@ -775,6 +775,7 @@ const DashboardContent: React.FC<{
                                             "neupanekiran450@gmail.com": "Automobile Engineering", // Example for another department
                                             "namasteportraits@gmailcom": "Biomedical Engineering",
                                             "rn8638@srmist.edu.in": "Biotechnology",
+                                            "vm2486@srmist.edu.in": "Biotechnology"
                                         };
                                     
                                     
