@@ -28,7 +28,6 @@ import { db, auth, app } from '@/firebase/config';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
-// ... (rest of your imports and chart setup - same as before) ...
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -41,7 +40,6 @@ ChartJS.register(
     Filler
 );
 
-// Chart options
 const lineOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -84,7 +82,7 @@ const lineOptions = {
     elements: { line: { tension: 0.4 } }
 };
 
-const lineData = {
+const lineData = {  // Initial data, will be updated
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
         label: 'Monthly Submissions',
@@ -106,7 +104,6 @@ const lineData = {
 };
 
 
-//
 const pieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -126,7 +123,6 @@ const pieDataOptions = {
     chartArea: { backgroundColor: '#f9fafb' }
 };
 
-// Proposal interface
 interface Proposal {
     id: string;
     title: string;
@@ -164,11 +160,10 @@ interface Proposal {
     sponsorshipDetails?: string[];
     sponsorshipDetailsRows?: any[];
     submissionTimestamp: string;
-	rejectionMessage?: string;
+    rejectionMessage?: string;
     reviewMessage?: string;
 }
 
-// Dynamic imports for chart components
 const LineChart = dynamic(() => Promise.resolve(Line), {
     ssr: false,
     loading: () => <p>Loading chart...</p>
@@ -179,15 +174,12 @@ const PieChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie),
     loading: () => <p>Loading chart...</p>
 });
 
-// Loading Component
 const LoadingComponent = () => (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
         Loading proposals...
     </div>
 );
 
-
-// Yearly dropdown component
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
@@ -210,7 +202,7 @@ function YearlyDropdown() {
         </select>
     );
 }
-// Dashboard content component
+
 const DashboardContent: React.FC<{
     eventProposals: Proposal[];
     loading: boolean;
@@ -274,14 +266,12 @@ const DashboardContent: React.FC<{
     };
 
 
-    // Calculate proposal counts
     const approvedProposalsCount = eventProposals.filter(p => p.status === 'Approved').length;
     const pendingProposalsCount = eventProposals.filter(p => p.status === 'Pending').length;
     const rejectedProposalsCount = eventProposals.filter(p => p.status === 'Rejected').length;
     const reviewProposalsCount = eventProposals.filter(p => p.status === 'Review').length;
     const totalProposalsCount = eventProposals.length;
 
-    // Prepare data for pie chart
     const pieData = {
         labels: ['Approved', 'Pending', 'Rejected', 'Review'],
         datasets: [{
@@ -293,11 +283,33 @@ const DashboardContent: React.FC<{
         }],
     };
 
-    // Get recent proposals
     const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice().reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice().reverse();
 
-    // Render loading component
+    // --- Line Chart Data Calculation (NEW) ---
+    const monthlyCounts = Array(12).fill(0);
+    eventProposals.forEach(proposal => {
+      if (proposal.date) {
+          const proposalDate = new Date(proposal.date);
+          if (!isNaN(proposalDate.getTime())) {
+              monthlyCounts[proposalDate.getMonth()]++;
+          } else {
+              console.error("Invalid date format:", proposal.date);
+          }
+      } else {
+          console.warn("Proposal missing date:", proposal);
+      }
+    });
+
+    const updatedLineData = {
+        ...lineData,
+        datasets: [{
+            ...lineData.datasets[0],
+            data: monthlyCounts,
+        }],
+    };
+    // --- End of Line Chart Data Calculation ---
+
     if (loading) {
         return <LoadingComponent />;
     }
@@ -371,7 +383,8 @@ const DashboardContent: React.FC<{
                                         </div>
                                     </div>
                                     <div className="h-72 relative">
-                                        <LineChart data={lineData} options={lineOptions} />
+                                        {/* Use updatedLineData */}
+                                        <LineChart data={updatedLineData} options={lineOptions} />
                                     </div>
                                     <div className="flex justify-between items-center border-t pt-5 mt-6">
                                         <button className="text-sm font-medium text-gray-500 text-center inline-flex items-center" type="button">
@@ -384,7 +397,6 @@ const DashboardContent: React.FC<{
                                     </div>
                                 </div>
 
-                                {/* Proposal Overview Table */}
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
                                         <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Proposal Overview</h2>
@@ -440,7 +452,6 @@ const DashboardContent: React.FC<{
                                     </div>
                                 </div>
 
-                                {/* Recently Applied Proposals List */}
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
                                         <div className="flex justify-between items-center mb-4">
@@ -649,7 +660,6 @@ const DashboardContent: React.FC<{
                                 )}
                             </div>
 
-                            {/* Action Buttons - Conditionally Rendered */}
                             {selectedProposal.status === 'Pending' && !isRejecting && !isReviewing && (
                                 <div className="flex space-x-4 mt-6">
                                     <button
@@ -664,7 +674,7 @@ const DashboardContent: React.FC<{
                                     >
                                         Review
                                     </button>
-                              
+
                                         <button
                                             onClick={handleRejectClick}
                                             className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-300"
@@ -675,7 +685,6 @@ const DashboardContent: React.FC<{
                                 </div>
                             )}
 
-                            {/* Rejection Input UI */}
                             {isRejecting && (
                                 <div className="mt-6">
                                     <div className="mb-2">
@@ -707,7 +716,6 @@ const DashboardContent: React.FC<{
                                 </div>
                             )}
 
-                            {/* Review Input UI */}
                             {isReviewing && (
                                 <div className="mt-6">
                                     <div className="mb-2">
@@ -737,180 +745,179 @@ const DashboardContent: React.FC<{
                                         </button>
                                     </div>
                                 </div>
-                            )}
+                                                            )}
 
-                        </motion.div>
-                    </motion.div>
-                )}
-            </div>
-        </>
-    );
-};
-// Main EventPortal component
-export default function EventPortal() {
-    const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
-    const [userDepartment, setUserDepartment] = useState<string | null>(null);
-
-
-    const hodEmailDepartmentMap: { [key: string]: string } = {
-        "hod.ctech.ktr.et@srmist.edu.in": "Ctech", // Use "Ctech" to match option value
-        "hod.cintel.ktr.et@srmist.edu.in": "Cintel", // Use "Cintel" to match option value
-    };
-
-    const exceptionEmailDepartmentMap: { [key: string]: string } = {
-        "kkaustubh92@gmail.com": "Ctech", // Assigning to Ctech as example
-        "kk6682@srmist.edu.in": "Cintel",
-        "kn3959@srmist.edu.in": "Ctech",
-        "neupanekiran512@gmail.com": "Aerospace Engineering", // Example for another department
-        "neupanekiran450@gmail.com": "Automobile Engineering", // Example for another department
-        "namasteportraits@gmailcom": "Biomedical Engineering",
-        "rn8638@srmist.edu.in": "Biotechnology",
-    };
-
-
-    const fetchProposals = useCallback(async (department: string | null = null) => {
-        setLoading(true);
-        try {
-            let q = collection(db, 'eventProposals');
-            if (department) {
-                q = query(q, where("organizingDepartment", "==", department));
-            }
-
-            const proposalSnapshot = await getDocs(q);
-            const proposalsList = proposalSnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    title: data.eventTitle,
-                    organizer: data.organizingDepartment,
-                    date: data.eventDate,
-                    status: data.proposalStatus || 'Pending',
-                    category: data.category,
-                    cost: data.estimatedBudget,
-                    email: data.convenerEmail,
-                    description: data.eventDescription,
-                    location: data.eventLocation,
-                    convenerName: data.convenerName,
-                    convenerEmail: data.convenerEmail,
-                    chiefGuestName: data.chiefGuestName,
-                    chiefGuestDesignation: data.chiefGuestDesignation,
-                    designation: data.designation,
-                    detailedBudget: data.detailedBudget,
-                    durationEvent: data.durationEvent,
-                    estimatedBudget: data.estimatedBudget,
-                    eventEndDate: data.eventEndDate,
-                    eventStartDate: data.eventStartDate,
-                    fundingDetails: data.fundingDetails,
-                    pastEvents: data.pastEvents,
-                    relevantDetails: data.relevantDetails,
-                    sponsorshipDetails: data.sponsorshipDetails,
-                    sponsorshipDetailsRows: data.sponsorshipDetailsRows,
-                    submissionTimestamp: data.submissionTimestamp,
-					rejectionMessage: data.rejectionMessage,
-                    reviewMessage: data.reviewMessage,
-                    ...data,
-                };
-            });
-            setEventProposals(proposalsList);
-        } catch (error) {
-            console.error("Error fetching proposals:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        const authInstance = getAuth(app);
-        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-            let department = null;
-            if (user && user.email) {
-                if (hodEmailDepartmentMap[user.email]) {
-                    department = hodEmailDepartmentMap[user.email];
-                } else if (exceptionEmailDepartmentMap[user.email]) {
-                    department = exceptionEmailDepartmentMap[user.email];
-                }
-                setUserDepartment(department);
-            } else {
-                setUserDepartment(null);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        fetchProposals(userDepartment);
-    }, [fetchProposals, userDepartment]);
-
-
-    // Handlers for proposal actions
-    const handleProposalClick = useCallback((proposal: Proposal) => {
-        setSelectedProposal(proposal);
-    }, []);
-
-    const closePopup = useCallback(() =>
-        {
-            setSelectedProposal(null);
-        }, []);
-
-        const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string, message: string = '') => { // message is now an argument
-            if (!proposal) return;
-
-
-            try {
-                const proposalRef = doc(db, 'eventProposals', proposal.id);
-                await updateDoc(proposalRef, {
-                    proposalStatus: newStatus,
-                    ...(newStatus === 'Rejected' && { rejectionMessage: message }),
-                    ...(newStatus === 'Review' && { reviewMessage: message }),
-                });
-                console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
-
-                // Send email via API
-                const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
-                console.log('Sending update request to /api/sendmail...', updatedProposal);
-
-                const response = await fetch('/api/sendmail', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
-                });
-
-                console.log('API response status:', response.status);
-                const data = await response.json();
-                console.log('API response data:', data);
-
-
-                if (data.error) {
-                    throw new Error(data.error); // Correctly throw the error
-                }
-
-                // Update local state to reflect changes *after* successful DB update and email
-                setEventProposals(prevProposals =>
-                    prevProposals.map(p =>
-                        p.id === proposal.id ? { ...p, status: newStatus, rejectionMessage: message, reviewMessage:message } : p  //Important: update the local state of rejection/review message
-                    )
-                );
-                setSelectedProposal(null); // Close the popup
-                alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
-
-            } catch (error: any) {
-                console.error("Error updating proposal status:", error);
-                alert(`Error updating proposal status: ${error.message}`);
-
-            }
-        }, [setEventProposals]); // Add setEventProposals as a dependency
-
-
-        return (
-            <DashboardContent
-                eventProposals={eventProposals}
-                loading={loading}
-                selectedProposal={selectedProposal}
-                handleProposalClick={handleProposalClick}
-                closePopup={closePopup}
-                handleUpdateStatus={handleUpdateStatus} // Pass handleUpdateStatus
-            />
-        );
-    }
+                                                            </motion.div>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        );
+                                    };
+                                    
+                                    export default function EventPortal() {
+                                        const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
+                                        const [loading, setLoading] = useState(true);
+                                        const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+                                        const [userDepartment, setUserDepartment] = useState<string | null>(null);
+                                    
+                                    
+                                        const hodEmailDepartmentMap: { [key: string]: string } = {
+                                            "hod.ctech.ktr.et@srmist.edu.in": "Ctech", // Use "Ctech" to match option value
+                                            "hod.cintel.ktr.et@srmist.edu.in": "Cintel", // Use "Cintel" to match option value
+                                        };
+                                    
+                                        const exceptionEmailDepartmentMap: { [key: string]: string } = {
+                                            "kkaustubh92@gmail.com": "Ctech", // Assigning to Ctech as example
+                                            "kk6682@srmist.edu.in": "Cintel",
+                                            "kn3959@srmist.edu.in": "Ctech",
+                                            "neupanekiran512@gmail.com": "Aerospace Engineering", // Example for another department
+                                            "neupanekiran450@gmail.com": "Automobile Engineering", // Example for another department
+                                            "namasteportraits@gmailcom": "Biomedical Engineering",
+                                            "rn8638@srmist.edu.in": "Biotechnology",
+                                        };
+                                    
+                                    
+                                        const fetchProposals = useCallback(async (department: string | null = null) => {
+                                            setLoading(true);
+                                            try {
+                                                let q = collection(db, 'eventProposals');
+                                                if (department) {
+                                                    q = query(q, where("organizingDepartment", "==", department));
+                                                }
+                                    
+                                                const proposalSnapshot = await getDocs(q);
+                                                const proposalsList = proposalSnapshot.docs.map(doc => {
+                                                    const data = doc.data();
+                                                    return {
+                                                        id: doc.id,
+                                                        title: data.eventTitle,
+                                                        organizer: data.organizingDepartment,
+                                                        date: data.eventDate,
+                                                        status: data.proposalStatus || 'Pending',
+                                                        category: data.category,
+                                                        cost: data.estimatedBudget,
+                                                        email: data.convenerEmail,
+                                                        description: data.eventDescription,
+                                                        location: data.eventLocation,
+                                                        convenerName: data.convenerName,
+                                                        convenerEmail: data.convenerEmail,
+                                                        chiefGuestName: data.chiefGuestName,
+                                                        chiefGuestDesignation: data.chiefGuestDesignation,
+                                                        designation: data.designation,
+                                                        detailedBudget: data.detailedBudget,
+                                                        durationEvent: data.durationEvent,
+                                                        estimatedBudget: data.estimatedBudget,
+                                                        eventEndDate: data.eventEndDate,
+                                                        eventStartDate: data.eventStartDate,
+                                                        fundingDetails: data.fundingDetails,
+                                                        pastEvents: data.pastEvents,
+                                                        relevantDetails: data.relevantDetails,
+                                                        sponsorshipDetails: data.sponsorshipDetails,
+                                                        sponsorshipDetailsRows: data.sponsorshipDetailsRows,
+                                                        submissionTimestamp: data.submissionTimestamp,
+                                                        rejectionMessage: data.rejectionMessage,
+                                                        reviewMessage: data.reviewMessage,
+                                                        ...data,
+                                                    };
+                                                });
+                                                setEventProposals(proposalsList);
+                                            } catch (error) {
+                                                console.error("Error fetching proposals:", error);
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }, []);
+                                    
+                                        useEffect(() => {
+                                            const authInstance = getAuth(app);
+                                            const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+                                                let department = null;
+                                                if (user && user.email) {
+                                                    if (hodEmailDepartmentMap[user.email]) {
+                                                        department = hodEmailDepartmentMap[user.email];
+                                                    } else if (exceptionEmailDepartmentMap[user.email]) {
+                                                        department = exceptionEmailDepartmentMap[user.email];
+                                                    }
+                                                    setUserDepartment(department);
+                                                } else {
+                                                    setUserDepartment(null);
+                                                }
+                                            });
+                                            return () => unsubscribe();
+                                        }, []);
+                                    
+                                        useEffect(() => {
+                                            fetchProposals(userDepartment);
+                                        }, [fetchProposals, userDepartment]);
+                                    
+                                    
+                                        const handleProposalClick = useCallback((proposal: Proposal) => {
+                                            setSelectedProposal(proposal);
+                                        }, []);
+                                    
+                                        const closePopup = useCallback(() =>
+                                            {
+                                                setSelectedProposal(null);
+                                            }, []);
+                                    
+                                            const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string, message: string = '') => { // message is now an argument
+                                                if (!proposal) return;
+                                    
+                                    
+                                                try {
+                                                    const proposalRef = doc(db, 'eventProposals', proposal.id);
+                                                    await updateDoc(proposalRef, {
+                                                        proposalStatus: newStatus,
+                                                        ...(newStatus === 'Rejected' && { rejectionMessage: message }),
+                                                        ...(newStatus === 'Review' && { reviewMessage: message }),
+                                                    });
+                                                    console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
+                                    
+                                                    // Send email via API
+                                                    const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
+                                                    console.log('Sending update request to /api/sendmail...', updatedProposal);
+                                    
+                                                    const response = await fetch('/api/sendmail', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
+                                                    });
+                                    
+                                                    console.log('API response status:', response.status);
+                                                    const data = await response.json();
+                                                    console.log('API response data:', data);
+                                    
+                                    
+                                                    if (data.error) {
+                                                        throw new Error(data.error); // Correctly throw the error
+                                                    }
+                                    
+                                                    // Update local state
+                                                    setEventProposals(prevProposals =>
+                                                        prevProposals.map(p =>
+                                                            p.id === proposal.id ? { ...p, status: newStatus, rejectionMessage: message, reviewMessage:message } : p  //Important: update the local state of rejection/review message
+                                                        )
+                                                    );
+                                                    setSelectedProposal(null); // Close the popup
+                                                    alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
+                                    
+                                                } catch (error: any) {
+                                                    console.error("Error updating proposal status:", error);
+                                                    alert(`Error updating proposal status: ${error.message}`);
+                                    
+                                                }
+                                            }, [setEventProposals]);
+                                    
+                                    
+                                            return (
+                                                <DashboardContent
+                                                    eventProposals={eventProposals}
+                                                    loading={loading}
+                                                    selectedProposal={selectedProposal}
+                                                    handleProposalClick={handleProposalClick}
+                                                    closePopup={closePopup}
+                                                    handleUpdateStatus={handleUpdateStatus}
+                                                />
+                                            );
+                                        }
