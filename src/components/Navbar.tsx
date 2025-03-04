@@ -71,7 +71,7 @@ const Navbar = () => {
     }
 
     if (email.startsWith('hod.')) {
-      router.push('/dashboard'); // HOD route
+      router.push('/hoddash'); // HOD route
     } else {
       router.push('/fadashboard'); // Faculty route
     }
