@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Trash2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid'; // Import uuidv4
 import { db } from '@/firebase/config';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter, useSearchParams } from 'next/navigation';
 
 
 export default function EventProposalForm() {
@@ -15,6 +17,8 @@ export default function EventProposalForm() {
   const [startDate, setStartDate] = useState<Date | null>(null);
 
   // Form field states (rest remain the same)
+  const searchParams = useSearchParams();
+    const router = useRouter();
   const [organizingDepartment, setOrganizingDepartment] = useState('');
   const [eventTitle, setEventTitle] = useState<string>('');
   const [eventDescription, setEventDescription] = useState('');
@@ -36,6 +40,7 @@ const [endDate, setEndDate] = useState("");
   const [fundUniversity, setFundUniversity] = useState('');
   const [fundRegistration, setFundRegistration] = useState('');
   const [fundSponsorship, setFundSponsorship] = useState('');
+  const [proposalId, setProposalId] = useState<string | null>(null); // State to hold proposal ID for editing
   const [fundOther, setFundOther] = useState('');
 
   // State for Detailed Budget Rows (rest remain the same)
@@ -125,8 +130,8 @@ const handleSubmit = async (e) => {
   e.preventDefault(); // Prevent default form submission
 
   // Convert startDate and endDate to Date objects
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = startDate ? new Date(startDate) : new Date();
+  const end = endDate ? new Date(endDate) : new Date();
 
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     alert("Invalid date selection. Please choose valid start and end dates.");
@@ -151,60 +156,83 @@ const handleSubmit = async (e) => {
  // }
 
   try {
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const proposalData = {
+        organizingDepartment,
+        eventTitle,
+        eventDescription,
+        durationEvent: calculatedDuration,
+        eventStartDate: start.toISOString(),
+        eventEndDate: end.toISOString(),
+        eventDate: start.toISOString(),
+        category,
+        designation,
+        estimatedBudget,
+        sponsorshipDetails,
+        pastEvents,
+        relevantDetails,
+        chiefGuestName,
+        chiefGuestDesignation,
+        chiefGuestAddress,
+        chiefGuestPhone,
+        convenerName,
+        convenerEmail,
+        fundingDetails: {
+            universityFund: fundUniversity,
+            registrationFund: fundRegistration,
+            sponsorshipFund: fundSponsorship,
+            otherSourcesFund: fundOther,
+        },
+        detailedBudget: detailedBudgetRows,
+        sponsorshipDetailsRows: sponsorshipRows,
+        submissionTimestamp: new Date().toISOString(),
+        proposalStatus: 'Pending', // Default status for new submissions
+    };
+
     const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
-    await addDoc(eventProposalsCollection, {
-      organizingDepartment,
-      eventTitle,
-      eventDescription, // Include event description
-      durationEvent: calculatedDuration, // Store calculated duration
-      eventStartDate: start.toISOString(), // Store start date as ISO string
-      eventEndDate: end.toISOString(), // Store end date as ISO string
-      eventDate: start.toISOString(), //date
-      category,
-      designation,
-      estimatedBudget,
-      sponsorshipDetails,
-      pastEvents,
-      relevantDetails,
-      chiefGuestName,
-      chiefGuestDesignation,
-      convenerName,
-      convenerEmail,
-      fundingDetails: {
-        universityFund: fundUniversity,
-        registrationFund: fundRegistration,
-        sponsorshipFund: fundSponsorship,
-        otherSourcesFund: fundOther,
-      },
-      detailedBudget: detailedBudgetRows,
-      sponsorshipDetailsRows: sponsorshipRows,
-      submissionTimestamp: new Date().toISOString(), // Add timestamp
-    });
 
-    alert('Event proposal submitted successfully!');
-    sendMail(convenerEmail); // Call sendMail function after successful submission
+    if (proposalId) {
+        // Update existing proposal
+        const proposalRef = doc(db, 'eventProposals', proposalId);
+        await updateDoc(proposalRef, proposalData);
+        alert('Event proposal updated and resubmitted successfully!');
+    } else {
+        // Add new proposal
+        await addDoc(eventProposalsCollection, proposalData);
+        alert('Event proposal submitted successfully!');
+    }
 
-    // Reset form fields
-    setOrganizingDepartment('');
-    setEventTitle('');
-    setEventDescription('');
-    setDurationEvent('');
-    setStartDate('');
-    setEndDate(''); // Reset end date as well
-    setCategory('');
-    setDesignation('');
-    setEstimatedBudget('');
-    setSponsorshipDetails('');
-    setPastEvents('');
-    setRelevantDetails('');
-    setChiefGuestName('');
-    setChiefGuestDesignation('');
-    setConvenerName('');
-    setConvenerEmail('');
-    setFundUniversity('');
-    setFundRegistration('');
-    setFundSponsorship('');
-    setFundOther('');
+      sendMail(convenerEmail); // Call sendMail function after successful submission
+
+      // Reset form fields
+      setOrganizingDepartment('');
+      setEventTitle('');
+      setEventDescription('');
+      setDurationEvent('');
+      setStartDate(null);
+      setEndDate(""); // Reset end date as well
+      setCategory('');
+      setDesignation('');
+      setEstimatedBudget('');
+      setSponsorshipDetails('');
+      setPastEvents('');
+      setRelevantDetails('');
+      setChiefGuestName('');
+      setChiefGuestDesignation('');
+      setChiefGuestAddress('');
+      setChiefGuestPhone('');
+      setConvenerName('');
+      setConvenerEmail('');
+      setFundUniversity('');
+      setFundRegistration('');
+      setFundSponsorship('');
+      setFundOther('');
+      setProposalId(null); // Clear proposal ID after submission/update
+
+
+    // Reset detailed budget rows
     setDetailedBudgetRows([
       { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
       { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
@@ -246,7 +274,57 @@ useEffect(() => {
   if (user?.email) {
     setConvenerEmail(user.email);
   }
-}, [user]); // Runs when user changes
+}, [user]);
+
+useEffect(() => {
+    const editMode = searchParams.get('edit');
+    if (editMode === 'true') {
+        // Parse proposal data from query parameters
+        const proposalData = {
+            id: searchParams.get('proposalId'),
+            title: searchParams.get('title'),
+            organizer: searchParams.get('organizer'),
+            date: searchParams.get('date'),
+            status: searchParams.get('status'),
+            category: searchParams.get('category'),
+            cost: searchParams.get('cost'),
+            email: searchParams.get('email'),
+            description: searchParams.get('description'),
+            location: searchParams.get('location'),
+            convenerName: searchParams.get('convenerName'),
+            convenerEmail: searchParams.get('convenerEmail'),
+            organizingDepartment: searchParams.get('organizer'), // Assuming 'organizer' in query params is department
+            eventTitle: searchParams.get('title'),
+            eventDescription: searchParams.get('description'),
+            category: searchParams.get('category'),
+            estimatedBudget: searchParams.get('cost'),
+            convenerName: searchParams.get('convenerName'),
+            convenerEmail: searchParams.get('convenerEmail'),
+            chiefGuestName: searchParams.get('chiefGuestName'),
+            chiefGuestDesignation: searchParams.get('chiefGuestDesignation'),
+            chiefGuestAddress: searchParams.get('chiefGuestAddress'),
+            chiefGuestPhone: searchParams.get('chiefGuestPhone'),
+        };
+
+        // Set form field values from proposalData
+        setProposalId(proposalData.id as string || null); // Set proposal ID for editing
+        setOrganizingDepartment(proposalData.organizingDepartment || '');
+        setEventTitle(proposalData.eventTitle || '');
+        setEventDescription(proposalData.eventDescription || '');
+        setCategory(proposalData.category || '');
+        setEstimatedBudget(proposalData.estimatedBudget as string || '');
+        setConvenerName(proposalData.convenerName || '');
+        setConvenerEmail(proposalData.convenerEmail || '');
+        setChiefGuestName(proposalData.chiefGuestName || '');
+        setChiefGuestDesignation(proposalData.chiefGuestDesignation || '');
+        setChiefGuestAddress(proposalData.chiefGuestAddress || '');
+        setChiefGuestPhone(proposalData.chiefGuestPhone || '');
+
+        if (proposalData.date) {
+            setStartDate(new Date(proposalData.date));
+        }
+    }
+}, [user]);
   return (
     <>
       <div style={{
@@ -258,7 +336,7 @@ useEffect(() => {
         <div className="bg-white bg-opacity-70 shadow-sm min-h-screen flex justify-center items-center py-10">
           <div className="card bg-white shadow-md border border-blue-400 rounded-2xl max-w-7xl w-full mx-4 md:mx-0">
             <div className="card-body p-8">
-              <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Submit Event Proposal</h2>
+              <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">{proposalId ? 'Edit Event Proposal' : 'Submit Event Proposal'}</h2>
 
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
@@ -393,26 +471,6 @@ useEffect(() => {
 </div>
 
 
-
-                <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="event-date">
-                    Event Date
-                  </label>
-                  {/* Conditionally render DatePicker only when startDate is initialized on client-side */}
-                  {startDate !== null && (
-                    <DatePicker
-                      id="event-date"
-                      selected={startDate}
-                      onChange={(date) => setStartDate(date)}
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                      placeholderText="Select Event Date"
-                      dateFormat="MMMM d, yyyy"
-                      required
-                    />
-                  )}
-                </div>
-
-
               <div>
                 <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="category">
                   Category
@@ -467,7 +525,7 @@ useEffect(() => {
 
                 </div>
 
-                
+
                 <div>
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="sponsorship-details">
                     Sponsorship Details
@@ -552,7 +610,7 @@ useEffect(() => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
                     Chief Guest / Celebrity Address
@@ -567,7 +625,7 @@ useEffect(() => {
                     required
                   />
                 </div>
-                
+
 
 
 
@@ -863,7 +921,7 @@ useEffect(() => {
 
                 <div className="mt-10">
                   <button type="submit" className="btn btn-primary w-full rounded-full text-lg font-semibold py-3 hover:shadow-xl transition-shadow duration-300">
-                    Submit Proposal
+                    {proposalId ? 'Update Proposal' : 'Submit Proposal'}
                   </button>
                 </div>
               </form>

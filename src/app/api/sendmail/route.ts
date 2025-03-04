@@ -18,6 +18,8 @@ interface Proposal {
     status: 'Approved' | 'Pending' | 'Rejected' | 'Review'; // Add 'Review' status
     sponsorshipType?: string;
     associatingAgencies?: string[] | string;
+    rejectionMessage?: string; // Add rejectionMessage to the interface
+    reviewMessage?: string;     // Add reviewMessage to the interface
 }
 
 // Initialize Nodemailer transporter (Keep your existing transporter setup)
@@ -91,8 +93,11 @@ export async function POST(request: Request) {
                 <p>Dear ${proposal.organizer},</p>
                 <p>Your proposal status has been updated to <strong>${proposal.status}</strong>.</p>
                 ${proposal.status === 'Approved' ? '<p>Congratulations! Your proposal has been approved. Please proceed with the next steps.</p>' : ''}
-                ${proposal.status === 'Rejected' ? '<p>We regret to inform you that your proposal was not accepted. Please contact support for more details.</p>' : ''}
-                ${proposal.status === 'Review' ? '<p>Your proposal is currently under review. We will notify you of the decision soon.</p>' : ''}
+                ${proposal.status === 'Rejected' ? '<p>We regret to inform you that your proposal was not accepted.</p>' : ''}
+                ${proposal.status === 'Rejected' && proposal.rejectionMessage ? `<p><strong>Reason for Rejection:</strong> ${proposal.rejectionMessage}</p>` : ''}  
+                ${proposal.status === 'Review' ? '<p>Your proposal is currently under review.</p>' : ''}
+                ${proposal.status === 'Review' && proposal.reviewMessage ? `<p><strong>Review Comments:</strong> ${proposal.reviewMessage}</p>` : ''} 
+                <p>We will notify you of further updates as necessary. For any queries, feel free to contact support.</p>
                 <p>Best regards,<br/>Proposal System Team</p>
             `;
         } else {

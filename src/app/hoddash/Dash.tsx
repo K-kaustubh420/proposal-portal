@@ -143,7 +143,7 @@ interface Proposal {
     chiefGuestName?: string;
     chiefGuestDesignation?: string;
     designation: string;
-    detailedBudget: number;
+    detailedBudget: any[]; // Assuming detailedBudget is an array
     durationEvent: string;
     estimatedBudget: number;
     eventDate: string;
@@ -151,12 +151,17 @@ interface Proposal {
     eventEndDate: string;
     eventStartDate: string;
     eventTitle: string;
-    fundingDetails?: string;
+    fundingDetails?: {
+        registrationFund?: number;
+        sponsorshipFund?: number;
+        universityFund?: number;
+        otherSourcesFund?: number;
+    };
     organizingDepartment: string;
     pastEvents?: string[];
     proposalStatus: string;
     relevantDetails?: string;
-    sponsorshipDetails?: string;
+    sponsorshipDetails?: string[];
     sponsorshipDetailsRows?: any[];
     submissionTimestamp: string;
 	rejectionMessage?: string;
@@ -212,7 +217,7 @@ const DashboardContent: React.FC<{
     selectedProposal: Proposal | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
-    handleUpdateStatus: (proposal: Proposal, newStatus: string) => Promise<void>; // Add handleUpdateStatus prop
+    handleUpdateStatus: (proposal: Proposal, newStatus: string, message?: string) => Promise<void>; // Modified handleUpdateStatus prop
 }> = ({
     eventProposals,
     loading,
@@ -221,6 +226,53 @@ const DashboardContent: React.FC<{
     closePopup,
     handleUpdateStatus, // Receive handleUpdateStatus
 }) => {
+    const [rejectionInput, setRejectionInput] = useState('');
+    const [reviewInput, setReviewInput] = useState('');
+    const [isRejecting, setIsRejecting] = useState(false);
+    const [isReviewing, setIsReviewing] = useState(false);
+
+    useEffect(() => {
+        if (selectedProposal) {
+            setIsRejecting(false); // Reset when a new proposal is selected
+            setIsReviewing(false);
+            setRejectionInput('');
+            setReviewInput('');
+        }
+    }, [selectedProposal]);
+
+
+    const handleRejectClick = () => {
+        setIsRejecting(true);
+        setIsReviewing(false);
+    };
+
+    const handleReviewClick = () => {
+        setIsReviewing(true);
+        setIsRejecting(false);
+    };
+
+
+    const confirmReject = () => {
+        handleUpdateStatus(selectedProposal!, 'Rejected', rejectionInput).then(() => {
+            setIsRejecting(false);
+            setRejectionInput('');
+        });
+    };
+
+    const confirmReview = () => {
+        handleUpdateStatus(selectedProposal!, 'Review', reviewInput).then(() => {
+            setIsReviewing(false);
+            setReviewInput('');
+        });
+    };
+
+    const cancelRejectReview = () => {
+        setIsRejecting(false);
+        setIsReviewing(false);
+        setRejectionInput('');
+        setReviewInput('');
+    };
+
 
     // Calculate proposal counts
     const approvedProposalsCount = eventProposals.filter(p => p.status === 'Approved').length;
@@ -461,6 +513,7 @@ const DashboardContent: React.FC<{
 
                             <div className="space-y-4 overflow-y-auto max-h-[500px]">
                                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                    {/* ... proposal details rendering ... */}
                                     <div>
                                         <p className="text-gray-700 font-semibold">Title:</p>
                                         <p className="text-gray-600">{selectedProposal.title}</p>
@@ -521,6 +574,7 @@ const DashboardContent: React.FC<{
                                         <p className="text-gray-700 font-semibold">Description:</p>
                                         <p className="text-gray-600">{selectedProposal.description}</p>
                                     </div>
+                                    {/* ... rest of proposal details ... */}
                                 </div>
 
                                 {selectedProposal.pastEvents && (
@@ -554,7 +608,7 @@ const DashboardContent: React.FC<{
                                         <ul className="list-disc list-inside text-gray-600">
                                             {selectedProposal.detailedBudget.map((item, index) => (
                                                 <li key={index}>
-                                                    {item.mainCategory} - {item.subCategory} (${item.totalAmount.toLocaleString()})
+                                                    {item.mainCategory} - {item.subCategory} (${item.totalAmount?.toLocaleString() || 'N/A'})
                                                 </li>
                                             ))}
                                         </ul>
@@ -595,27 +649,96 @@ const DashboardContent: React.FC<{
                                 )}
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex space-x-4 mt-6">
-                                <button
-                                    onClick={() => handleUpdateStatus(selectedProposal, 'Approved')}
-                                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-300"
-                                >
-                                    Accept
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateStatus(selectedProposal, 'Review')}
-                                    className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition duration-300"
-                                >
-                                    Review
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateStatus(selectedProposal, 'Rejected')}
-                                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-300"
-                                >
-                                    Reject
-                                </button>
-                            </div>
+                            {/* Action Buttons - Conditionally Rendered */}
+                            {selectedProposal.status === 'Pending' && !isRejecting && !isReviewing && (
+                                <div className="flex space-x-4 mt-6">
+                                    <button
+                                        onClick={() => handleUpdateStatus(selectedProposal, 'Approved')}
+                                        className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-300"
+                                    >
+                                        Accept
+                                    </button>
+                                    <button
+                                        onClick={handleReviewClick}
+                                        className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition duration-300"
+                                    >
+                                        Review
+                                    </button>
+                              
+                                        <button
+                                            onClick={handleRejectClick}
+                                            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-300"
+                                        >
+                                            Reject
+                                        </button>
+
+                                </div>
+                            )}
+
+                            {/* Rejection Input UI */}
+                            {isRejecting && (
+                                <div className="mt-6">
+                                    <div className="mb-2">
+                                        <label htmlFor="rejectionMessage" className="block text-sm font-semibold text-gray-700">Reason for Rejection:</label>
+                                        <textarea
+                                            id="rejectionMessage"
+                                            rows={3}
+                                            className="mt-1 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white text-black"
+                                            placeholder="Enter rejection reason here..."
+                                            value={rejectionInput}
+                                            onChange={(e) => setRejectionInput(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex space-x-4 justify-end">
+                                        <button
+                                            onClick={cancelRejectReview}
+                                            className="px-4 py-2 text-gray-600 bg-gray-200 hover:bg-gray-300 rounded-md transition duration-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmReject}
+                                            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-300"
+                                            disabled={!rejectionInput.trim()}
+                                        >
+                                            Confirm Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Review Input UI */}
+                            {isReviewing && (
+                                <div className="mt-6">
+                                    <div className="mb-2">
+                                        <label htmlFor="reviewMessage" className="block text-sm font-semibold text-gray-700">Comments for Review:</label>
+                                        <textarea
+                                            id="reviewMessage"
+                                            rows={3}
+                                            className="mt-1 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black bg-white"
+                                            placeholder="Enter review comments here..."
+                                            value={reviewInput}
+                                            onChange={(e) => setReviewInput(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex space-x-4 justify-end">
+                                        <button
+                                            onClick={cancelRejectReview}
+                                            className="px-4 py-2 text-gray-600 bg-gray-200 hover:bg-gray-300 rounded-md transition duration-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmReview}
+                                            className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition duration-300"
+                                            disabled={!reviewInput.trim()}
+                                        >
+                                            Confirm Review
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                         </motion.div>
                     </motion.div>
                 )}
@@ -629,8 +752,6 @@ export default function EventPortal() {
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
     const [userDepartment, setUserDepartment] = useState<string | null>(null);
-    const [rejectionMessage, setRejectionMessage] = useState('');  // State for rejection message
-    const [reviewMessage, setReviewMessage] = useState('');        //State for review message
 
 
     const hodEmailDepartmentMap: { [key: string]: string } = {
@@ -726,27 +847,17 @@ export default function EventPortal() {
     // Handlers for proposal actions
     const handleProposalClick = useCallback((proposal: Proposal) => {
         setSelectedProposal(proposal);
-        setRejectionMessage(''); // Reset message on proposal click
-        setReviewMessage('');
     }, []);
 
     const closePopup = useCallback(() =>
         {
             setSelectedProposal(null);
         }, []);
-    
-        const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string) => {
+
+        const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string, message: string = '') => { // message is now an argument
             if (!proposal) return;
-    
-            let message = '';
-            if (newStatus === 'Rejected') {
-                message = prompt("Please enter the reason for rejection:") || '';
-                if (!message) return; // Cancel update if no message is entered
-            }
-            else if (newStatus === 'Review') {
-                message = prompt("Please enter comments for review:") || '';
-                if (!message) return; // Cancel the update if no message is entered
-            }
+
+
             try {
                 const proposalRef = doc(db, 'eventProposals', proposal.id);
                 await updateDoc(proposalRef, {
@@ -755,26 +866,26 @@ export default function EventPortal() {
                     ...(newStatus === 'Review' && { reviewMessage: message }),
                 });
                 console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
-    
+
                 // Send email via API
                 const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
                 console.log('Sending update request to /api/sendmail...', updatedProposal);
-    
+
                 const response = await fetch('/api/sendmail', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
                 });
-    
+
                 console.log('API response status:', response.status);
                 const data = await response.json();
                 console.log('API response data:', data);
-    
-    
+
+
                 if (data.error) {
                     throw new Error(data.error); // Correctly throw the error
                 }
-    
+
                 // Update local state to reflect changes *after* successful DB update and email
                 setEventProposals(prevProposals =>
                     prevProposals.map(p =>
@@ -783,15 +894,15 @@ export default function EventPortal() {
                 );
                 setSelectedProposal(null); // Close the popup
                 alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
-    
+
             } catch (error: any) {
                 console.error("Error updating proposal status:", error);
                 alert(`Error updating proposal status: ${error.message}`);
-    
+
             }
         }, [setEventProposals]); // Add setEventProposals as a dependency
-    
-    
+
+
         return (
             <DashboardContent
                 eventProposals={eventProposals}

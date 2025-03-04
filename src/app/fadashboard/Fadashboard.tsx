@@ -208,7 +208,6 @@ const MyDashboardContent: React.FC<{
     closePopup,
     currentUserEmail, // Destructure currentUserEmail
 }) => {
-
     // Calculate proposal counts for the user
     const approvedProposalsCount = userProposals.filter(p => p.status === 'Approved').length;
     const pendingProposalsCount = userProposals.filter(p => p.status === 'Pending').length;
@@ -533,6 +532,15 @@ const MyDashboardContent: React.FC<{
                                     <p className="text-gray-700 font-semibold">Status:</p>
                                     <p className="text-gray-600">{selectedProposal.status}</p>
                                 </div>
+                                {/* ** ADDED THIS SECTION ** */}
+                                {selectedProposal.status === 'Review' && (
+                                    <div className="mt-6">
+                                        <Link
+                                            href={{ pathname: '/Proposal', query: { proposalId: selectedProposal.id, edit: 'true', ...selectedProposal } }}
+                                            className="btn btn-sm btn-primary rounded-full"
+                                        >Edit and Resend</Link>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Status update buttons removed for user dashboard */}
