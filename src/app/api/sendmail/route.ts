@@ -5,23 +5,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Define the Proposal interface
-interface Proposal {
-    id: string;
-    title: string;
-    organizer: string;
-    date: string;
-    category: string;
-    cost: number;
-    email: string;
-    description: string;
-    status: 'Approved' | 'Pending' | 'Rejected' | 'Review'; // Add 'Review' status
-    sponsorshipType?: string;
-    associatingAgencies?: string[] | string;
-    rejectionMessage?: string; // Add rejectionMessage to the interface
-    reviewMessage?: string;     // Add reviewMessage to the interface
-}
-
 // Initialize Nodemailer transporter (Keep your existing transporter setup)
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -32,7 +15,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify transporter configuration on startup (Keep your existing verification)
-transporter.verify((err: any, success: any) => {
+transporter.verify((err: Error | null, success: boolean) => {
     if (err) {
         console.error('Transporter configuration failed:', err);
     } else {

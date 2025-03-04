@@ -1,8 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Line, Pie } from 'react-chartjs-2';
-import { motion } from "framer-motion";
+import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -21,13 +20,9 @@ import {
     XCircle,
     CheckCircle,
     ArrowUpRight,
-    Info,
-    X,
-    Users,
-    CalendarCheck
-} from 'lucide-react';
+    Info} from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 ChartJS.register(
     CategoryScale,
@@ -240,11 +235,6 @@ const DashboardContent: React.FC<{
     eventProposals,
     loading,
     selectedProposal,
-    isUpdatingStatus,
-    statusUpdateMessage,
-    handleProposalClick,
-    closePopup,
-    updateProposalStatus,
 }) => {
 
     // Calculate proposal counts
@@ -517,9 +507,14 @@ export default function EventPortal() {
 
             setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
 
-        } catch (error: any) {
-            console.error("Error updating proposal status:", error);
-            setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error("Error updating proposal status:", error);
+                setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
+            } else {
+                console.error("Unexpected error:", error);
+                setStatusUpdateMessage("An unexpected error occurred.");
+            }
         } finally {
             setIsUpdatingStatus(false);
             setTimeout(() => setStatusUpdateMessage(null), 5000);

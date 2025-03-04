@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, ArcElement, Filler } from 'chart.js';
-import { ListChecks, ThumbsUp, Clock, Calendar, Layers, Flag, TrendingUp, FileText, UserRound, XCircle, CheckCircle, ArrowUpRight, Info, X } from 'lucide-react';
+import { ListChecks, Clock, XCircle, CheckCircle, ArrowUpRight, Info, X } from 'lucide-react';
 import { db } from '@/firebase/config';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
@@ -166,7 +166,6 @@ export default function EventPortal() {
     const pendingProposalsCount = eventProposals.filter(p => p.status === 'Pending').length;
     const rejectedProposalsCount = eventProposals.filter(p => p.status === 'Rejected').length;
     const totalProposalsCount = eventProposals.length;
-    const totalCost = eventProposals.reduce((sum, p) => sum + (p.cost || 0), 0);
 
     const pieData = {
         labels: ['Approved', 'Pending', 'Rejected'],
@@ -182,9 +181,6 @@ export default function EventPortal() {
     const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice(-3).reverse();
 
-    const handleProposalClick = (proposal) => {
-        setSelectedProposal(proposal);
-    };
 
     const closePopup = () => {
         setSelectedProposal(null);
@@ -224,7 +220,7 @@ export default function EventPortal() {
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-blue-700">Welcome</h1>
-                        <p className="text-gray-500 text-sm">Here's a snapshot of event proposals </p>
+                        <p className="text-gray-500 text-sm">Here&apos;s a snapshot of event proposals </p>
                     </div>
                     <div>
                         <select className="select select-bordered select-sm max-w-xs bg-white text-gray-700">
