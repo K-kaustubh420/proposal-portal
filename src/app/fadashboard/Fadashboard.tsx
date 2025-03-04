@@ -434,12 +434,12 @@ const MyDashboardContent: React.FC<{
                             </div>
                         </div>
                     </div>
-                    <div className="sticky bottom-4 right-4 flex justify-end">
+                    {/* <div className="sticky bottom-4 right-4 flex justify-end">
                         <Link href="/Proposal" className="btn btn-primary btn-lg rounded-full shadow-md hover:shadow-lg text-white font-bold flex items-center space-x-2">
                             <Plus className="h-5 w-5" />
                             <span>Create Proposal</span>
                         </Link>
-                    </div>
+                    </div> */}
                 </div>
 
 
