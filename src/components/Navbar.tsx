@@ -84,8 +84,7 @@ const Navbar = () => {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
-
-            if (!user.email?.endsWith('@srmist.edu.in') && !isExceptionEmail(user.email || '')) {
+            if (!user.email?.endsWith('@srmist.edu.in') || !isExceptionEmail(user.email || '')) {
                 await signOut(auth);
                 setIsLoginPopupOpen(true);
                 setLoginError("Only SRMIST email addresses are allowed to sign in using Google, with some exceptions.");
