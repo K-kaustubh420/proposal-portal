@@ -3,12 +3,11 @@ import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Trash2 } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid'; // Import uuidv4
 import { db } from '@/firebase/config';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 
 export default function EventProposalForm() {
@@ -18,7 +17,6 @@ export default function EventProposalForm() {
 
   // Form field states (rest remain the same)
   const searchParams = useSearchParams();
-    const router = useRouter();
   const [organizingDepartment, setOrganizingDepartment] = useState('');
   const [eventTitle, setEventTitle] = useState<string>('');
   const [eventDescription, setEventDescription] = useState('');
@@ -147,7 +145,6 @@ const handleSubmit = async (e) => {
   const calculatedDuration = `${days} days, ${hours} hours, ${minutes} minutes`;
 
   // Calculate total detailed budget
-  const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
   // Check if estimated budget matches
   //if (totalDetailedBudget !== parseFloat(estimatedBudget)) {

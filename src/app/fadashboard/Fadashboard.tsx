@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Line, Pie } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
 import Link from 'next/link';
 import {
@@ -22,11 +22,8 @@ import {
     XCircle,
     CheckCircle,
     ArrowUpRight,
-    Info,
-    X,
-    Plus
-} from 'lucide-react';
-import { db, auth, app } from '@/firebase/config';
+    X} from 'lucide-react';
+import { db, app } from '@/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
@@ -535,7 +532,7 @@ export default function MyDashboard() {
         return () => unsubscribe();
     }, []);
 
-    const fetchUserProposals = useCallback(async (userEmail) => {
+    const fetchUserProposals = useCallback(async (userEmail: string) => {
         setLoading(true);
         try {
             const proposalsCollection = collection(db, 'eventProposals');

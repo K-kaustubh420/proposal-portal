@@ -2,20 +2,21 @@
 import { RxCross2 } from "react-icons/rx";
 import { useState, useEffect } from 'react';
 import { FaGoogle } from "react-icons/fa";
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { app } from '@/firebase/config';
 import Image from 'next/image';
 import Link from 'next/link';
+import { User } from "firebase/auth";
 
 const Navbar = () => {
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const pathname = usePathname();
   const [loginError, setLoginError] = useState(null);
-  const [user, setUser] = useState(null);
+  
+  const [user, setUser] = useState<User | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {

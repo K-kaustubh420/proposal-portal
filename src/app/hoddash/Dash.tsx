@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
-import { Line, Pie } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
 import {
     Chart as ChartJS,
@@ -24,7 +24,7 @@ import {
     ArrowUpRight,
     X
 } from 'lucide-react';
-import { db, auth, app } from '@/firebase/config';
+import { db, app } from '@/firebase/config';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
@@ -40,7 +40,9 @@ ChartJS.register(
     Filler
 );
 
-const lineOptions = {
+import { ChartOptions } from 'chart.js';
+
+const lineOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -54,24 +56,17 @@ const lineOptions = {
             intersect: false,
             mode: 'index',
             bodyFont: { size: 14 },
-            titleFont: { size: 16, weight: 'bold' },
+            titleFont: { size: 16, weight: 700 },
             padding: 10,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: { label: string; formattedValue: string }) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
-        chartArea: { backgroundColor: '#f9fafb' },
     },
     scales: {
         y: {
             type: 'linear',
             beginAtZero: true,
-            grid: {
-                borderColor: '#CBD5E0',
-                borderDash: [3, 3],
-                color: '#CBD5E0',
-                lineWidth: 1,
-            },
             ticks: { color: '#4b5563', font: { size: 12 } }
         },
         x: {
@@ -108,7 +103,7 @@ const pieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-        legend: { position: 'bottom', labels: { color: '#4b5563' } },
+        legend: { position: 'bottom' as const, labels: { color: '#4b5563' } },
         tooltip: {
             backgroundColor: '#ffffff',
             bodyColor: '#2D3748',
@@ -116,7 +111,7 @@ const pieDataOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: { label: string; formattedValue: string }) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
     },
@@ -139,7 +134,7 @@ interface Proposal {
     chiefGuestName?: string;
     chiefGuestDesignation?: string;
     designation: string;
-    detailedBudget: any[]; // Assuming detailedBudget is an array
+    detailedBudget: { mainCategory: string; subCategory: string; totalAmount?: number }[]; // Assuming detailedBudget is an array of objects with these properties
     durationEvent: string;
     estimatedBudget: number;
     eventDate: string;
@@ -158,7 +153,7 @@ interface Proposal {
     proposalStatus: string;
     relevantDetails?: string;
     sponsorshipDetails?: string[];
-    sponsorshipDetailsRows?: any[];
+    sponsorshipDetailsRows?: { [key: string]: string | number | boolean }[];
     submissionTimestamp: string;
     rejectionMessage?: string;
     reviewMessage?: string;
@@ -183,7 +178,7 @@ const LoadingComponent = () => (
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event) => {
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -283,7 +278,6 @@ const DashboardContent: React.FC<{
         }],
     };
 
-    const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice().reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice().reverse();
 
     // --- Line Chart Data Calculation (NEW) ---
@@ -467,10 +461,10 @@ const DashboardContent: React.FC<{
                                                     <div className="flex items-center">
                                                         <div className="avatar mr-3">
                                                             <div className="mask mask-squircle w-8 h-8">
-                                                                {proposal.id % 3 === 0 ? (
+                                                                {parseInt(proposal.id) % 3 === 0 ? (
                                                                     <img
-                                                                        src={`/avatar${(proposal.id % 3) + 1}.png`}
-                                                                        onError={(e) => (e.target.style.display = "none")}
+                                                                        src={`/avatar${(Number(proposal.id) % 3) + 1}.png`}
+                                                                        onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
                                                                         alt={proposal.title || "Avatar"}
                                                                         className="w-full h-full object-cover"
                                                                     />
@@ -782,11 +776,10 @@ const DashboardContent: React.FC<{
                                         const fetchProposals = useCallback(async (department: string | null = null) => {
                                             setLoading(true);
                                             try {
-                                                let q = collection(db, 'eventProposals');
-                                                if (department) {
-                                                    q = query(q, where("organizingDepartment", "==", department));
+                                                if (!department) {
+                                                    throw new Error("Department not found");
                                                 }
-                                    
+                                                const q = query(collection(db, 'eventProposals'), where("organizingDepartment", "==", department));
                                                 const proposalSnapshot = await getDocs(q);
                                                 const proposalsList = proposalSnapshot.docs.map(doc => {
                                                     const data = doc.data();
@@ -819,7 +812,11 @@ const DashboardContent: React.FC<{
                                                         submissionTimestamp: data.submissionTimestamp,
                                                         rejectionMessage: data.rejectionMessage,
                                                         reviewMessage: data.reviewMessage,
-                                                        ...data,
+                                                        eventDate: data.eventDate,
+                                                        eventDescription: data.eventDescription,
+                                                        eventTitle: data.eventTitle,
+                                                        organizingDepartment: data.organizingDepartment,
+                                                        proposalStatus: data.proposalStatus || 'Pending',
                                                     };
                                                 });
                                                 setEventProposals(proposalsList);
@@ -903,9 +900,13 @@ const DashboardContent: React.FC<{
                                                     setSelectedProposal(null); // Close the popup
                                                     alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
                                     
-                                                } catch (error: any) {
+                                                } catch (error) {
                                                     console.error("Error updating proposal status:", error);
-                                                    alert(`Error updating proposal status: ${error.message}`);
+                                                    if (error instanceof Error) {
+                                                        alert(`Error updating proposal status: ${error.message}`);
+                                                    } else {
+                                                        alert('Error updating proposal status');
+                                                    }
                                     
                                                 }
                                             }, [setEventProposals]);

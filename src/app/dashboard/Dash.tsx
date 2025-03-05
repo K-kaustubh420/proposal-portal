@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
-import { Line, Pie } from 'react-chartjs-2';
-import crypto from 'crypto';
+import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
 import {
     Chart as ChartJS,
@@ -23,11 +22,10 @@ import {
     XCircle,
     CheckCircle,
     ArrowUpRight,
-    Info,
     X
 } from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 ChartJS.register(
     CategoryScale,
@@ -157,7 +155,7 @@ interface Proposal {
     proposalStatus: string;
     relevantDetails?: string;
     sponsorshipDetails?: string;
-    sponsorshipDetailsRows?: any[];  // Assuming sponsorship details rows are structured data
+    sponsorshipDetailsRows?: { [key: string]: string | number }[];  // Assuming sponsorship details rows are structured data
     submissionTimestamp: string;
 }
 
@@ -250,7 +248,6 @@ const DashboardContent: React.FC<{
     };
 
     // Get recent proposals
-    const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice().reverse();
     const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice().reverse();
 
     // Render loading or no proposals component
@@ -415,6 +412,7 @@ const DashboardContent: React.FC<{
                                 <div className="avatar mr-3">
                                 <div className="mask mask-squircle w-8 h-8">
   {proposal.id % 3 === 0 ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img 
       src={`/avatar${(proposal.id % 3) + 1}.png`} 
       onError={(e) => e.target.style.display = "none"} 
@@ -788,7 +786,7 @@ export default function EventPortal() {
 
             setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
 
-        } catch (error: any) { // Explicitly type the error
+        } catch (error: unknown) { // Explicitly type the error
             console.error("Error updating proposal status:", error);
             setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
         } finally {

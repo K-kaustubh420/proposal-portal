@@ -1,8 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Line, Pie } from 'react-chartjs-2';
-import { motion } from "framer-motion";
+import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -21,11 +20,9 @@ import {
     XCircle,
     CheckCircle,
     ArrowUpRight,
-    Info,
-    X
-} from 'lucide-react';
+    Info} from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 ChartJS.register(
     CategoryScale,
@@ -52,19 +49,19 @@ const lineOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             intersect: false,
-            mode: 'index',
+            mode: 'index' as const,
             bodyFont: { size: 14 },
-            titleFont: { size: 16, weight: 'bold' },
+            titleFont: { size: 16, weight: 'bold' as const },
             padding: 10,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: { label: string; formattedValue: string; }) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
         chartArea: { backgroundColor: '#f9fafb' },
     },
     scales: {
         y: {
-            type: 'linear',
+            type: 'linear' as const,
             beginAtZero: true,
             grid: {
                 borderColor: '#CBD5E0',
@@ -107,7 +104,7 @@ const pieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-        legend: { position: 'bottom', labels: { color: '#4b5563' } },
+        legend: { position: 'bottom' as const, labels: { color: '#4b5563' } },
         tooltip: {
             backgroundColor: '#ffffff',
             bodyColor: '#2D3748',
@@ -115,7 +112,7 @@ const pieDataOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: { label: string; formattedValue: string; }) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
     },
@@ -166,7 +163,7 @@ const NoProposalsComponent = () => (
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event) => {
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -197,11 +194,6 @@ const DashboardContent: React.FC<{
     eventProposals,
     loading,
     selectedProposal,
-    isUpdatingStatus,
-    statusUpdateMessage,
-    handleProposalClick,
-    closePopup,
-    updateProposalStatus,
 }) => {
 
     // Calculate proposal counts
@@ -224,8 +216,6 @@ const DashboardContent: React.FC<{
     };
 
     // Get recent proposals
-    const recentApprovedProposals = eventProposals.filter(p => p.status === 'Approved').slice(-3).reverse();
-    const recentAppliedProposals = eventProposals.filter(p => p.status === 'Pending').slice(-3).reverse();
 
     // Render loading or no proposals component
     if (loading) {
@@ -464,9 +454,9 @@ export default function EventPortal() {
 
             setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
 
-        } catch (error: any) { // Explicitly type the error
+        } catch (error: unknown) { // Explicitly type the error
             console.error("Error updating proposal status:", error);
-            setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
+            setStatusUpdateMessage(`Error updating proposal status: ${(error as Error).message}`);
         } finally {
             setIsUpdatingStatus(false);
             setTimeout(() => setStatusUpdateMessage(null), 5000);
@@ -481,7 +471,8 @@ export default function EventPortal() {
             isUpdatingStatus={isUpdatingStatus}
             statusUpdateMessage={statusUpdateMessage}
             closePopup={closePopup}
-            updateProposalStatus={updateProposalStatus}
-        />
+            updateProposalStatus={updateProposalStatus} handleProposalClick={function (): void {
+                throw new Error('Function not implemented.');
+            } }        />
     );
 }

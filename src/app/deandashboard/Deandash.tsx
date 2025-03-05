@@ -202,11 +202,6 @@ const DashboardContent: React.FC<{
     eventProposals,
     loading,
     selectedProposal,
-    isUpdatingStatus,
-    statusUpdateMessage,
-    handleProposalClick,
-    closePopup,
-    updateProposalStatus,
 }) => {
 
     // Filter for approved proposals ONLY
