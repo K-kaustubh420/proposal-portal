@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Line, Pie } from 'react-chartjs-2';
-import { motion } from "framer-motion";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -23,11 +22,12 @@ import {
     ArrowUpRight,
     Info,
     X,
-    Users,
-    CalendarCheck
+    Check,
+    Mail,
+    Inbox
 } from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Import getDoc
 
 ChartJS.register(
     CategoryScale,
@@ -141,6 +141,7 @@ interface Proposal {
     chiefGuestName?: string;
     chiefGuestDesignation?: string;
     events?: { eventTitle: string }[];
+    tags?: string[]; // Add a 'tags' field
 }
 
 // Dynamic imports for chart components
@@ -188,45 +189,6 @@ function YearlyDropdown() {
     );
 }
 
-// Chief Guest Table Component
-const ChiefGuestTable = ({ proposals }) => {
-    if (!proposals) return null;
-    const approvedGuests = proposals.filter(proposal => proposal.status === 'Approved' && proposal.chiefGuestName);
-
-    const calculateVisits = (guestName) => {
-        return approvedGuests.filter(proposal => proposal.chiefGuestName === guestName).length;
-    };
-
-    return (
-        <div className="overflow-x-auto">
-            <table className="table w-full">
-                <thead>
-                    <tr>
-                        <th>Chief Guest Name</th>
-                        <th>Designation</th>
-                        <th>Visits</th>
-                        <th>Events Attended</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {approvedGuests.map((proposal, index) => (
-                        <tr key={index}>
-                            <td>{proposal.chiefGuestName}</td>
-                            <td>{proposal.chiefGuestDesignation}</td>
-                            <td>{calculateVisits(proposal.chiefGuestName)}</td>
-                            <td>
-                                {proposal.events ? proposal.events.map(event => event.eventTitle).join(', ') : 'N/A'}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-};
-
-
-// Dashboard content component
 const DashboardContent: React.FC<{
     eventProposals: Proposal[];
     loading: boolean;
@@ -235,7 +197,7 @@ const DashboardContent: React.FC<{
     statusUpdateMessage: string | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
-    updateProposalStatus: (proposal: Proposal, newStatus: string) => Promise<void>;
+    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string) => Promise<void>; // Add newTag
 }> = ({
     eventProposals,
     loading,
@@ -247,33 +209,61 @@ const DashboardContent: React.FC<{
     updateProposalStatus,
 }) => {
 
-    // Calculate proposal counts
-    const approvedProposalsCount = eventProposals.filter(p => p.status === 'Approved').length;
-    const pendingProposalsCount = eventProposals.filter(p => p.status === 'Pending').length;
-    const rejectedProposalsCount = eventProposals.filter(p => p.status === 'Rejected').length;
-    const reviewProposalsCount = eventProposals.filter(p => p.status === 'Review').length;
-    const totalProposalsCount = eventProposals.length;
+    // Filter for approved proposals ONLY
+    const approvedProposals = eventProposals.filter(p => p.status === 'Approved');
 
-    // Prepare data for pie chart
+    // Calculate counts (based on tags)
+    const approvedCount = approvedProposals.length;
+    const reviewCount = approvedProposals.filter(p => p.tags?.includes('Review')).length;
+    const rejectedCount = approvedProposals.filter(p => p.tags?.includes('Rejected')).length;
+    const doneCount = approvedProposals.filter(p => p.tags?.includes('Done')).length;
+
+
+    // Pie chart data
     const pieData = {
-        labels: ['Approved', 'Pending', 'Rejected', 'Review'],
+        labels: ['Approved', 'Review', 'Rejected', 'Done'],
         datasets: [{
             label: 'Proposal Status',
-            data: [approvedProposalsCount, pendingProposalsCount, rejectedProposalsCount, reviewProposalsCount],
-            backgroundColor: ['#A78BFA', '#F9A8D4', '#EF4444', '#3AB7BF'],
+            data: [approvedCount - reviewCount - rejectedCount - doneCount, reviewCount, rejectedCount, doneCount],
+            backgroundColor: ['#A78BFA', '#3AB7BF', '#EF4444', '#82E0AA'],
             borderWidth: 0,
             hoverOffset: 5
         }],
     };
 
-    // Render loading or no proposals component
     if (loading) {
         return <LoadingComponent />;
     }
 
-    if (eventProposals.length === 0) {
-        return <NoProposalsComponent />;
+    if (approvedProposals.length === 0) {
+        return (
+            <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
+                No approved proposals available.
+            </div>
+        );
     }
+
+    // Get badge class based on tags
+    const getBadgeClass = (tags?: string[]) => {
+        if (!tags) {
+            return 'badge-success'; // Default for Approved
+        }
+        if (tags.includes('Done')) return 'badge-primary';
+        if (tags.includes('Review')) return 'badge-info';
+        if (tags.includes('Rejected')) return 'badge-error';
+        return 'badge-success'; // Default
+    };
+    // Get badge text based on tags.
+    const getBadgeText = (tags?: string[]) => {
+        if (!tags) {
+            return 'Approved';
+        }
+        if (tags.includes('Done')) return 'Done';
+        if (tags.includes('Review')) return 'Review';
+        if (tags.includes('Rejected')) return 'Rejected';
+        return 'Approved';
+    };
+
 
     return (
         <>
@@ -290,8 +280,8 @@ const DashboardContent: React.FC<{
                     <div className="p-6 max-w-7xl mx-auto space-y-8">
                         <div className="flex justify-between items-center">
                             <div>
-                                <h1 className="text-2xl font-bold text-blue-700">Welcome</h1>
-                                <p className="text-gray-500 text-sm">Snapshot of event proposals</p>
+                                <h1 className="text-2xl font-bold text-blue-700">Approved Proposals</h1>
+                                <p className="text-gray-500 text-sm">Manage approved event proposals</p>
                             </div>
                             <div>
                                 <YearlyDropdown />
@@ -301,107 +291,68 @@ const DashboardContent: React.FC<{
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="card stat shadow-md rounded-lg border-t-4 border-blue-500 bg-white">
                                 <div className="stat-figure text-blue-500"><ListChecks className="h-6 w-6" /></div>
-                                <div className="stat-value">{totalProposalsCount.toLocaleString()}</div>
-                                <div className="stat-title">Total Applied</div>
+                                <div className="stat-value">{approvedCount.toLocaleString()}</div>
+                                <div className="stat-title">Total Approved</div>
                             </div>
-
                             <div className="card stat shadow-md rounded-lg border-t-4 border-green-500 bg-white">
                                 <div className="stat-figure text-green-500"><CheckCircle className="h-6 w-6" /></div>
-                                <div className="stat-value">{approvedProposalsCount.toLocaleString()}</div>
-                                <div className="stat-title">Approved</div>
+                                <div className="stat-value">{doneCount.toLocaleString()}</div>
+                                <div className="stat-title">Done</div>
                             </div>
-
                             <div className="card stat shadow-md rounded-lg border-t-4 border-red-500 bg-white">
                                 <div className="stat-figure text-red-500"><XCircle className="h-6 w-6" /></div>
-                                <div className="stat-value">{rejectedProposalsCount.toLocaleString()}</div>
+                                <div className="stat-value">{rejectedCount.toLocaleString()}</div>
                                 <div className="stat-title">Rejected</div>
-                            </div>
-
-                            <div className="card stat shadow-md rounded-lg border-t-4 border-yellow-500 bg-white">
-                                <div className="stat-figure text-yellow-500"><Clock className="h-6 w-6" /></div>
-                                <div className="stat-value">{pendingProposalsCount.toLocaleString()}</div>
-                                <div className="stat-title">Pending</div>
                             </div>
                             <div className="card stat shadow-md rounded-lg border-t-4 border-info bg-white">
                                 <div className="stat-figure text-info"><Clock className="h-6 w-6" /></div>
-                                <div className="stat-value">{reviewProposalsCount.toLocaleString()}</div>
+                                <div className="stat-value">{reviewCount.toLocaleString()}</div>
                                 <div className="stat-title">Review</div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-8">
-                                <div className="card shadow-md rounded-lg p-5 md:p-7 bg-white">
-                                    <div className="flex justify-between mb-4">
-                                        <div>
-                                            <h5 className="text-3xl font-bold text-gray-700 pb-2">{totalProposalsCount.toLocaleString()}</h5>
-                                            <p className="text-base font-normal text-gray-700">Proposals this year</p>
-                                        </div>
-                                        <div className="flex items-center px-2.5 py-0.5 text-base font-semibold text-green-800 bg-green-100 rounded-full">
-                                            +{(approvedProposalsCount / totalProposalsCount * 100).toFixed(1)}%
-                                            <ArrowUpRight className="w-3 h-3 ms-1" aria-hidden="true" color="currentColor" />
-                                        </div>
-                                    </div>
-                                    <div className="h-72 relative">
-                                        <LineChart data={lineData} options={lineOptions} />
-                                    </div>
-                                    <div className="flex justify-between items-center border-t pt-5 mt-6">
-                                        <button className="text-sm font-medium text-gray-500 text-center inline-flex items-center" type="button">
-                                            Last Year
-                                        </button>
-                                        <a href="#" className="uppercase text-sm font-semibold inline-flex items-center rounded-lg text-blue-500 hover:text-blue-700 bg-gray-50 hover:bg-gray-100 px-3 py-2">
-                                            Submission Report
-                                            <ArrowUpRight className="w-2.5 h-2.5 ms-1.5 rtl:rotate-180" aria-hidden="true" color="currentColor" />
-                                        </a>
-                                    </div>
-                                </div>
-
-                                {/* Proposal Overview Table */}
                                 <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
-                                        <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Proposal Overview</h2>
+                                        <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Approved Proposals Inbox</h2>
                                         <div className="overflow-x-auto">
                                             <table className="table table-compact w-full">
                                                 <thead>
                                                     <tr>
+                                                        <th></th>
+                                                        <th>Status</th>
                                                         <th>Title</th>
-                                                        <th>Organizing department</th>
+                                                        <th>Organizing Department</th>
                                                         <th>Convener</th>
                                                         <th>Date</th>
-                                                        <th>Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {eventProposals.map((proposal) => (
-                                                        <tr key={proposal.id}>
+                                                    {approvedProposals.map((proposal) => (
+                                                        <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
+                                                            <td>
+                                                                <input type="checkbox" className="checkbox" />
+                                                            </td>
+                                                            <td>
+                                                                <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
+                                                                    {getBadgeText(proposal.tags)}
+                                                                </div>
+                                                            </td>
                                                             <td>{proposal.title}</td>
                                                             <td>{proposal.organizer}</td>
                                                             <td>{proposal.convenerName}</td>
                                                             <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
-                                                            <td>
-                                                                <div className={`badge badge-sm badge-${proposal.status === 'Approved' ? 'success' : proposal.status === 'Pending' ? 'warning' : proposal.status === 'Rejected' ? 'error' : proposal.status === 'Review' ? 'info' : ''}`}>{proposal.status}</div>
-                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
-
                                     </div>
                                 </div>
                             </div>
 
-
                             <div className="lg:col-span-1 space-y-8">
-                                {/* Chief Guest Table Card */}
-                                <div className="card shadow-md rounded-lg bg-white">
-                                    <div className="card-body">
-                                        <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Chief Guest Details</h2>
-                                        <ChiefGuestTable proposals={eventProposals} />
-                                    </div>
-                                </div>
-
-                                 {/* Proposal Status Chart Card */}
                                 <div className="card shadow-md rounded-lg p-4 md:p-6 bg-white">
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
@@ -420,13 +371,95 @@ const DashboardContent: React.FC<{
                                         <PieChart data={pieData} options={pieDataOptions} />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                            </div></div></div></div></div>
+            {/* Proposal Details Popup */}
+            {selectedProposal && (
+                <>
+                    {/* Proposal Details Popup */}
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl">
+                            <div className="flex justify-between items-start">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">{selectedProposal.title}</h2>
+                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="mb-4">
+                                <p className="text-gray-700"><span className="font-semibold">Organizing Department:</span> {selectedProposal.organizer}</p>
+                                <p className="text-gray-700"><span className="font-semibold">Convener:</span> {selectedProposal.convenerName}</p>
+                                <p className="text-gray-700"><span className="font-semibold">Convener Email:</span> {selectedProposal.convenerEmail}</p>
+                                <p className="text-gray-700"><span className="font-semibold">Date:</span> {new Date(selectedProposal.date).toLocaleDateString("en-GB")}</p>
+                                <p className="text-gray-700">
+                                    <span className="font-semibold">Status:</span>
+                                    <span className={`badge badge-sm ${getBadgeClass(selectedProposal.tags)}`}>
+                                        {getBadgeText(selectedProposal.tags)} {/* Use getBadgeText */}
+                                    </span>
+                                </p>
+                                <p className="text-gray-700"><span className="font-semibold">Category:</span> {selectedProposal.category}</p>
+                                <p className="text-gray-700"><span className="font-semibold">Estimated Cost:</span> ₹{selectedProposal.cost.toLocaleString()}</p>
+                                {selectedProposal.chiefGuestName && (
+                                    <>
+                                        <p className="text-gray-700"><span className="font-semibold">Chief Guest:</span> {selectedProposal.chiefGuestName}</p>
+                                        <p className="text-gray-700"><span className="font-semibold">Chief Guest Designation:</span> {selectedProposal.chiefGuestDesignation}</p>
+                                    </>
+                                )}
+                                <p className="text-gray-700 mt-4"><span className="font-semibold">Description:</span></p>
+                                <p className="text-gray-700">{selectedProposal.description}</p>
+                            </div>
+
+                            <div className="flex justify-end space-x-4 mt-6">
+                                <button
+                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Review')}
+                                    className="btn btn-info text-white"
+                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Review')}
+                                >
+                                    Mark for Review
+                                </button>
+                                <button
+                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Done')}
+                                    className="btn btn-success text-white"
+                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Done')}
+                                >
+                                    Approve & Mark as Done
+                                </button>
+                                <button
+                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Rejected')}
+                                    className="btn btn-error text-white"
+                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Rejected')}
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        updateProposalStatus(selectedProposal, 'Approved', 'ReviewAndDone'); // First, mark as Review
+
+                                    }}
+                                    className="btn btn-primary text-white"
+                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Review') || selectedProposal.tags?.includes('Done')}
+                                >
+                                    Mark for Review & Done
+                                </button>
+                            </div>
+
+                            {statusUpdateMessage && (
+                                <div className={`mt-4 p-3 rounded-md ${statusUpdateMessage.startsWith('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                    {statusUpdateMessage}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
         </>
     );
 };
 
-// Main EventPortal component
 export default function EventPortal() {
     const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -434,7 +467,6 @@ export default function EventPortal() {
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [statusUpdateMessage, setStatusUpdateMessage] = useState<string | null>(null);
 
-    // Fetch proposals from Firebase
     const fetchProposals = useCallback(async () => {
         setLoading(true);
         try {
@@ -442,6 +474,8 @@ export default function EventPortal() {
             const proposalSnapshot = await getDocs(proposalsCollection);
             const proposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data();
+                // Initialize tags as an empty array if it's undefined
+                const tags = data.tags || [];
                 return {
                     id: doc.id,
                     title: data.eventTitle,
@@ -458,6 +492,7 @@ export default function EventPortal() {
                     chiefGuestName: data.chiefGuestName,
                     chiefGuestDesignation: data.chiefGuestDesignation,
                     events: data.events || [],
+                    tags: tags, // Use initialized tags
                     ...data,
                 };
             });
@@ -473,34 +508,121 @@ export default function EventPortal() {
         fetchProposals();
     }, [fetchProposals]);
 
-    // Handlers for proposal actions
+    const handleProposalClick = useCallback((proposal: Proposal) => {
+        setSelectedProposal(proposal);
+    }, []);
+
     const closePopup = useCallback(() => {
         setSelectedProposal(null);
     }, []);
 
-    // Update proposal status and send email via API
-    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string) => {
+    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, newTag?: string) => {
         if (isUpdatingStatus) return;
         setIsUpdatingStatus(true);
         setStatusUpdateMessage('Updating status...');
 
         try {
-            // Optimistically update local state
             setEventProposals(currentProposals =>
-                currentProposals.map(proposal =>
-                    proposal.id === proposalToUpdate.id ? { ...proposal, status: newStatus } : proposal
-                )
+                currentProposals.map(proposal => {
+                    if (proposal.id === proposalToUpdate.id) {
+                        let updatedTags = proposal.tags || [];  // Ensure tags exist
+                        // Add or remove the tag based on the action
+                        if (newTag) {
+                            if (newTag === 'ReviewAndDone') {
+                                updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                                if (!updatedTags.includes('Done')) {
+                                    updatedTags.push('Done');
+                                }
+                                if (!updatedTags.includes('Review')) {
+                                    updatedTags.push('Review');
+                                }
+                            }
+                            else if (newTag === 'Done' && updatedTags.includes("Review")) {
+                                updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                                if (!updatedTags.includes('Done')) {
+                                    updatedTags.push('Done'); // Add if not present
+                                }
+
+                            }
+                            else if (newTag === 'Review' && updatedTags.includes("Done")) {
+                                if (!updatedTags.includes('Review')) {
+                                    updatedTags.push('Review'); // Add if not present
+                                }
+
+                            }
+                            else if (!updatedTags.includes(newTag)) {
+                                updatedTags.push(newTag); // Add if not present
+
+                            }
+                            else {
+                                updatedTags = updatedTags.filter(tag => tag !== newTag); // Remove tag
+                            }
+                        }
+                        return { ...proposal, status: newStatus, tags: updatedTags }; // Update both status and tags
+
+                    }
+                    return proposal;
+                })
             );
-            setSelectedProposal(null); // Close the popup
+            setSelectedProposal(null);
 
-            // Update Firestore
             const proposalDocRef = doc(db, 'eventProposals', proposalToUpdate.id);
-            await updateDoc(proposalDocRef, { proposalStatus: newStatus });
+            const updateData: any = { proposalStatus: newStatus };  // Use 'any' to allow dynamic updates
 
-            // Send email via API
-            const updatedProposal = { ...proposalToUpdate, status: newStatus };
-            console.log('Sending update request to /api/email...', updatedProposal);
+            // Only update tags if a new tag is provided
+            if (newTag) {
+                if (newTag === 'ReviewAndDone') {
+                    updateData.tags = ['Review', 'Done']; // special case to apply the 'Review' tag
+                } else {
+                    // Get current tags from Firestore.  Crucially, we *must* fetch the *current*
+                    // tags from the database *before* updating, to avoid overwriting other
+                    // concurrent changes.
+                    const docSnap = await getDoc(proposalDocRef); // Use the imported getDoc
+                    if (docSnap.exists()) {
+                        const currentTags = docSnap.data().tags || [];
+                        let updatedTags = [...currentTags];
 
+                        if (newTag === 'ReviewAndDone') {
+                            updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                            if (!updatedTags.includes('Done')) {
+                                updatedTags.push('Done');
+                            }
+                            if (!updatedTags.includes('Review')) {
+                                updatedTags.push('Review');
+                            }
+                        }
+                        else if (newTag === 'Done' && updatedTags.includes("Review")) {
+                            updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                            if (!updatedTags.includes('Done')) {
+                                updatedTags.push('Done'); // Add if not present
+                            }
+
+                        }
+                        else if (newTag === 'Review' && updatedTags.includes("Done")) {
+                            if (!updatedTags.includes('Review')) {
+                                updatedTags.push('Review'); // Add if not present
+                            }
+
+                        }
+                        else if (!updatedTags.includes(newTag)) {
+                            updatedTags.push(newTag); // Add if not present
+
+                        }
+                        else {
+                            updatedTags = updatedTags.filter(tag => tag !== newTag); // Remove tag
+                        }
+
+
+                        updateData.tags = updatedTags;
+
+                    }
+                }
+            }
+
+            await updateDoc(proposalDocRef, updateData);
+
+            const updatedProposal = { ...proposalToUpdate, status: newStatus, tags: updateData.tags || [] };
+            console.log('Sending update request to /api/sendmail...', updatedProposal);
             const response = await fetch('/api/sendmail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -511,12 +633,24 @@ export default function EventPortal() {
             const data = await response.json();
             console.log('API response data:', data);
 
+            if (!response.ok) { // Check for HTTP error status
+                throw new Error(`API error: ${response.status} - ${data.error || 'Unknown error'}`);
+            }
+
             if (data.error) {
                 throw new Error(data.error);
             }
+            if (newTag) {
+                if (newTag === 'ReviewAndDone') {
+                    setStatusUpdateMessage(`Proposal status updated to Review and then marked as Done. Email sent successfully!`);
+                } else {
+                    setStatusUpdateMessage(`Proposal tagged as ${newTag} and email sent successfully!`); // Show tag
+                }
+            }
+            else {
+                setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
 
-            setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
-
+            }
         } catch (error: any) {
             console.error("Error updating proposal status:", error);
             setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
@@ -533,6 +667,7 @@ export default function EventPortal() {
             selectedProposal={selectedProposal}
             isUpdatingStatus={isUpdatingStatus}
             statusUpdateMessage={statusUpdateMessage}
+            handleProposalClick={handleProposalClick}
             closePopup={closePopup}
             updateProposalStatus={updateProposalStatus}
         />
