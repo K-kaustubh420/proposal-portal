@@ -1,4 +1,3 @@
-// ./src/components/Navbar.tsx
 "use client"
 import { RxCross2 } from "react-icons/rx";
 import { useState, useEffect, useCallback } from 'react';
@@ -147,34 +146,37 @@ const Navbar = () => {
       <div className="flex-1">
         <Link href="/" className="btn btn-ghost text-xl normal-case">
           <div className="flex items-center">
-            <Image src="/Srmlogo.jpg" alt="SRM Logo" width={48} height={48} className="rounded-full mr-4" />
-            <span>SRM Event Connect</span>
+            <Image src="/Srmlogo.jpg" alt="SRM Logo" width={48} height={48} className="rounded-full mr-2 sm:mr-4" />
+            <span className="text-lg sm:text-xl">SRM Event Connect</span>
           </div>
         </Link>
       </div>
-       <div className="flex-none">
+       <div className="flex-none gap-2 sm:gap-4"> {/* Adjusted gap for responsiveness */}
         {/* Added Proposal and Dashboard Links */}
         {user && (
           <>
-            <Link href="/Proposal" className="btn btn-ghost">
-              Proposal
-            </Link>
-            <Link href={user.email && user.email.startsWith('hod.') ? '/dashboard' : '/fadashboard'} className="btn btn-ghost">
-              Dashboard
-            </Link>
+            {/* Buttons for larger screens - Visible on small and up */}
+            <div className="hidden sm:flex gap-2 sm:gap-4">
+              <Link href="/Proposal" className="btn btn-ghost">
+                Proposal
+              </Link>
+              <Link href={user.email && user.email.startsWith('hod.') ? '/dashboard' : '/fadashboard'} className="btn btn-ghost">
+                Dashboard
+              </Link>
+            </div>
           </>
         )}
 
         {user ? (
            <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-              <div className="w-10 rounded-full">
+              <div className="w-8 sm:w-10 rounded-full"> {/* Adjusted avatar size for responsiveness */}
                 {user.photoURL && (
                   <Image
                     alt="Profile"
                     src={user.photoURL}
-                    width={50}
-                    height={50}
+                    width={40}
+                    height={40}
                     referrerPolicy="no-referrer"
                     className="rounded-full"
                   />
@@ -182,7 +184,9 @@ const Navbar = () => {
               </div>
             </div>
             <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-slate-200 rounded-box w-52 text-black">
-
+              {/* Proposal and Dashboard in dropdown for smaller screens - Hidden on small and up */}
+              <li className="sm:hidden"><Link href="/Proposal">Proposal</Link></li>
+              <li className="sm:hidden"><Link href={user.email && user.email.startsWith('hod.') ? '/dashboard' : '/fadashboard'}>Dashboard</Link></li>
               <li>
                 <button onClick={handleLogout}>Logout</button>
               </li>
@@ -191,7 +195,7 @@ const Navbar = () => {
         ) : (
           <button
             onClick={toggleLoginPopup}
-            className="bg-[#498edf] btn-ghost px-3 py-2 rounded-2xl hover:bg-blue-800 text-white font-semibold focus:outline-none focus:shadow-outline"
+            className="bg-[#498edf] btn-ghost px-2 sm:px-3 py-2 rounded-2xl hover:bg-blue-800 text-white font-semibold focus:outline-none focus:shadow-outline text-sm sm:text-base" // Adjusted padding and text size
           >
             Login
           </button>
