@@ -40,7 +40,49 @@ ChartJS.register(
 );
 
 // Chart options
-const lineOptions = {
+interface LineOptions {
+    responsive: boolean;
+    maintainAspectRatio: boolean;
+    plugins: {
+        legend: { display: boolean };
+        tooltip: {
+            backgroundColor: string;
+            bodyColor: string;
+            titleColor: string;
+            borderColor: string;
+            borderWidth: number;
+            intersect: boolean;
+            mode: string;
+            bodyFont: { size: number };
+            titleFont: { size: number; weight: number };
+            padding: number;
+            callbacks: {
+                label: (context: { label: string; formattedValue: string }) => string;
+            };
+        };
+        chartArea: { backgroundColor: string };
+    };
+    scales: {
+        y: {
+            type: string;
+            beginAtZero: boolean;
+            grid: {
+                borderColor: string;
+                borderDash: number[];
+                color: string;
+                lineWidth: number;
+            };
+            ticks: { color: string; font: { size: number } };
+        };
+        x: {
+            grid: { display: boolean };
+            ticks: { color: string; font: { size: number } };
+        };
+    };
+    elements: { line: { tension: number } };
+}
+
+const lineOptions: LineOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -54,7 +96,7 @@ const lineOptions = {
             intersect: false,
             mode: 'index',
             bodyFont: { size: 14 },
-            titleFont: { size: 16, weight: 'bold' },
+            titleFont: { size: 16, weight: 700 },
             padding: 10,
             callbacks: {
                 label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
@@ -105,7 +147,26 @@ const lineData = {
 
 
 //
-const pieDataOptions = {
+interface PieDataOptions {
+    responsive: boolean;
+    maintainAspectRatio: boolean;
+    plugins: {
+        legend: { position: string; labels: { color: string } };
+        tooltip: {
+            backgroundColor: string;
+            bodyColor: string;
+            titleColor: string;
+            borderColor: string;
+            borderWidth: number;
+            callbacks: {
+                label: (context: { label: string; formattedValue: string }) => string;
+            };
+        };
+    };
+    chartArea: { backgroundColor: string };
+}
+
+const pieDataOptions: PieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -187,7 +248,7 @@ const NoProposalsComponent = () => (
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event) => {
+    const handleChange = (event: { target: { value: React.SetStateAction<string>; }; }) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -411,10 +472,10 @@ const DashboardContent: React.FC<{
                             <div className="flex items-center">
                                 <div className="avatar mr-3">
                                 <div className="mask mask-squircle w-8 h-8">
-  {proposal.id % 3 === 0 ? (
+  {parseInt(proposal.id) % 3 === 0 ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img 
-      src={`/avatar${(proposal.id % 3) + 1}.png`} 
+      src={`/avatar${(parseInt(proposal.id) % 3) + 1}.png`} 
       onError={(e) => e.target.style.display = "none"} 
       alt={proposal.title || "Avatar"} 
       className="w-full h-full object-cover"
