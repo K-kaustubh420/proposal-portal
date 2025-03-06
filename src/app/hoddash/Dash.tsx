@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
+import Image from 'next/image';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 import { db, app } from '@/firebase/config';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import {  getAuth, onAuthStateChanged } from 'firebase/auth';
 
 ChartJS.register(
     CategoryScale,
@@ -41,6 +42,7 @@ ChartJS.register(
 );
 
 import { ChartOptions } from 'chart.js';
+
 
 const lineOptions: ChartOptions<'line'> = {
     responsive: true,
@@ -187,6 +189,7 @@ function YearlyDropdown() {
             className="select select-bordered select-sm bg-white text-gray-700"
             value={selectedYearly}
             onChange={handleChange}
+             aria-label='Year'
         >
             <option value="Yearly">Yearly</option>
             <option value="Monthly">Monthly</option>
@@ -462,7 +465,7 @@ const DashboardContent: React.FC<{
                                                         <div className="avatar mr-3">
                                                             <div className="mask mask-squircle w-8 h-8">
                                                                 {parseInt(proposal.id) % 3 === 0 ? (
-                                                                    <img
+                                                                    <Image
                                                                         src={`/avatar${(Number(proposal.id) % 3) + 1}.png`}
                                                                         onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
                                                                         alt={proposal.title || "Avatar"}
@@ -511,7 +514,7 @@ const DashboardContent: React.FC<{
                         >
                             <div className="flex justify-between rounded-md items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
-                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
+                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label='Close pop-up'>
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
@@ -739,187 +742,198 @@ const DashboardContent: React.FC<{
                                         </button>
                                     </div>
                                 </div>
-                                                            )}
+                            )}
 
-                                                            </motion.div>
-                                                        </motion.div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        );
-                                    };
-                                    
-                                    export default function EventPortal() {
-                                        const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
-                                        const [loading, setLoading] = useState(true);
-                                        const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
-                                        const [userDepartment, setUserDepartment] = useState<string | null>(null);
-                                    
-                                    
-                                        const hodEmailDepartmentMap: { [key: string]: string } = {
-                                            "hod.ctech.ktr.et@srmist.edu.in": "Ctech", // Use "Ctech" to match option value
-                                            "hod.cintel.ktr.et@srmist.edu.in": "Cintel", // Use "Cintel" to match option value
-                                        };
-                                    
-                                        const exceptionEmailDepartmentMap: { [key: string]: string } = {
-                                            "kkaustubh92@gmail.com": "Ctech", // Assigning to Ctech as example
-                                            "kk6682@srmist.edu.in": "Cintel",
-                                            "kn3959@srmist.edu.in": "Ctech",
-                                            "neupanekiran512@gmail.com": "Aerospace Engineering", // Example for another department
-                                            "neupanekiran450@gmail.com": "Automobile Engineering", // Example for another department
-                                            "namasteportraits@gmailcom": "Biomedical Engineering",
-                                            "rn8638@srmist.edu.in": "Biotechnology",
-                                            "vm2486@srmist.edu.in": "Biotechnology"
-                                        };
-                                    
-                                    
-                                        const fetchProposals = useCallback(async (department: string | null = null) => {
-                                            setLoading(true);
-                                            try {
-                                                if (!department) {
-                                                    throw new Error("Department not found");
-                                                }
-                                                const q = query(collection(db, 'eventProposals'), where("organizingDepartment", "==", department));
-                                                const proposalSnapshot = await getDocs(q);
-                                                const proposalsList = proposalSnapshot.docs.map(doc => {
-                                                    const data = doc.data();
-                                                    return {
-                                                        id: doc.id,
-                                                        title: data.eventTitle,
-                                                        organizer: data.organizingDepartment,
-                                                        date: data.eventDate,
-                                                        status: data.proposalStatus || 'Pending',
-                                                        category: data.category,
-                                                        cost: data.estimatedBudget,
-                                                        email: data.convenerEmail,
-                                                        description: data.eventDescription,
-                                                        location: data.eventLocation,
-                                                        convenerName: data.convenerName,
-                                                        convenerEmail: data.convenerEmail,
-                                                        chiefGuestName: data.chiefGuestName,
-                                                        chiefGuestDesignation: data.chiefGuestDesignation,
-                                                        designation: data.designation,
-                                                        detailedBudget: data.detailedBudget,
-                                                        durationEvent: data.durationEvent,
-                                                        estimatedBudget: data.estimatedBudget,
-                                                        eventEndDate: data.eventEndDate,
-                                                        eventStartDate: data.eventStartDate,
-                                                        fundingDetails: data.fundingDetails,
-                                                        pastEvents: data.pastEvents,
-                                                        relevantDetails: data.relevantDetails,
-                                                        sponsorshipDetails: data.sponsorshipDetails,
-                                                        sponsorshipDetailsRows: data.sponsorshipDetailsRows,
-                                                        submissionTimestamp: data.submissionTimestamp,
-                                                        rejectionMessage: data.rejectionMessage,
-                                                        reviewMessage: data.reviewMessage,
-                                                        eventDate: data.eventDate,
-                                                        eventDescription: data.eventDescription,
-                                                        eventTitle: data.eventTitle,
-                                                        organizingDepartment: data.organizingDepartment,
-                                                        proposalStatus: data.proposalStatus || 'Pending',
-                                                    };
-                                                });
-                                                setEventProposals(proposalsList);
-                                            } catch (error) {
-                                                console.error("Error fetching proposals:", error);
-                                            } finally {
-                                                setLoading(false);
-                                            }
-                                        }, []);
-                                    
-                                        useEffect(() => {
-                                            const authInstance = getAuth(app);
-                                            const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-                                                let department = null;
-                                                if (user && user.email) {
-                                                    if (hodEmailDepartmentMap[user.email]) {
-                                                        department = hodEmailDepartmentMap[user.email];
-                                                    } else if (exceptionEmailDepartmentMap[user.email]) {
-                                                        department = exceptionEmailDepartmentMap[user.email];
-                                                    }
-                                                    setUserDepartment(department);
-                                                } else {
-                                                    setUserDepartment(null);
-                                                }
-                                            });
-                                            return () => unsubscribe();
-                                        }, []);
-                                    
-                                        useEffect(() => {
-                                            fetchProposals(userDepartment);
-                                        }, [fetchProposals, userDepartment]);
-                                    
-                                    
-                                        const handleProposalClick = useCallback((proposal: Proposal) => {
-                                            setSelectedProposal(proposal);
-                                        }, []);
-                                    
-                                        const closePopup = useCallback(() =>
-                                            {
-                                                setSelectedProposal(null);
-                                            }, []);
-                                    
-                                            const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string, message: string = '') => { // message is now an argument
-                                                if (!proposal) return;
-                                    
-                                    
-                                                try {
-                                                    const proposalRef = doc(db, 'eventProposals', proposal.id);
-                                                    await updateDoc(proposalRef, {
-                                                        proposalStatus: newStatus,
-                                                        ...(newStatus === 'Rejected' && { rejectionMessage: message }),
-                                                        ...(newStatus === 'Review' && { reviewMessage: message }),
-                                                    });
-                                                    console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
-                                    
-                                                    // Send email via API
-                                                    const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
-                                                    console.log('Sending update request to /api/sendmail...', updatedProposal);
-                                    
-                                                    const response = await fetch('/api/sendmail', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
-                                                    });
-                                    
-                                                    console.log('API response status:', response.status);
-                                                    const data = await response.json();
-                                                    console.log('API response data:', data);
-                                    
-                                    
-                                                    if (data.error) {
-                                                        throw new Error(data.error); // Correctly throw the error
-                                                    }
-                                    
-                                                    // Update local state
-                                                    setEventProposals(prevProposals =>
-                                                        prevProposals.map(p =>
-                                                            p.id === proposal.id ? { ...p, status: newStatus, rejectionMessage: message, reviewMessage:message } : p  //Important: update the local state of rejection/review message
-                                                        )
-                                                    );
-                                                    setSelectedProposal(null); // Close the popup
-                                                    alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
-                                    
-                                                } catch (error) {
-                                                    console.error("Error updating proposal status:", error);
-                                                    if (error instanceof Error) {
-                                                        alert(`Error updating proposal status: ${error.message}`);
-                                                    } else {
-                                                        alert('Error updating proposal status');
-                                                    }
-                                    
-                                                }
-                                            }, [setEventProposals]);
-                                    
-                                    
-                                            return (
-                                                <DashboardContent
-                                                    eventProposals={eventProposals}
-                                                    loading={loading}
-                                                    selectedProposal={selectedProposal}
-                                                    handleProposalClick={handleProposalClick}
-                                                    closePopup={closePopup}
-                                                    handleUpdateStatus={handleUpdateStatus}
-                                                />
-                                            );
-                                        }
+                        </motion.div>
+                    </motion.div>
+                )}
+            </div>
+        </>
+    );
+};
+
+export default function EventPortal() {
+    const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+    const [userDepartment, setUserDepartment] = useState<string | null>(null);
+
+
+    const hodEmailDepartmentMap = useMemo(() => ({
+        "hod.ctech.ktr.et@srmist.edu.in": "Ctech",
+        "hod.cintel.ktr.et@srmist.edu.in": "Cintel"
+      }), []);
+
+      const exceptionEmailDepartmentMap = useMemo(() => ({
+        "kkaustubh92@gmail.com": "Ctech",
+        "kk6682@srmist.edu.in": "Cintel",
+        "kn3959@srmist.edu.in": "Ctech",
+        "neupanekiran512@gmail.com": "Aerospace Engineering",
+        "neupanekiran450@gmail.com": "Automobile Engineering",
+        "namasteportraits@gmailcom": "Biomedical Engineering",
+        "rn8638@srmist.edu.in": "Biotechnology",
+        "vm2486@srmist.edu.in": "Biotechnology"
+      }), []);
+
+
+    const fetchProposals = useCallback(async (department: string | null = null) => {
+        setLoading(true);
+        try {
+            if (!department) {
+                throw  Error("Department not found");
+            }
+            const q = query(collection(db, 'eventProposals'), where("organizingDepartment", "==", department));
+            const proposalSnapshot = await getDocs(q);
+            const proposalsList = proposalSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    title: data.eventTitle,
+                    organizer: data.organizingDepartment,
+                    date: data.eventDate,
+                    status: data.proposalStatus || 'Pending',
+                    category: data.category,
+                    cost: data.estimatedBudget,
+                    email: data.convenerEmail,
+                    description: data.eventDescription,
+                    location: data.eventLocation,
+                    convenerName: data.convenerName,
+                    convenerEmail: data.convenerEmail,
+                    chiefGuestName: data.chiefGuestName,
+                    chiefGuestDesignation: data.chiefGuestDesignation,
+                    designation: data.designation,
+                    detailedBudget: data.detailedBudget,
+                    durationEvent: data.durationEvent,
+                    estimatedBudget: data.estimatedBudget,
+                    eventEndDate: data.eventEndDate,
+                    eventStartDate: data.eventStartDate,
+                    fundingDetails: data.fundingDetails,
+                    pastEvents: data.pastEvents,
+                    relevantDetails: data.relevantDetails,
+                    sponsorshipDetails: data.sponsorshipDetails,
+                    sponsorshipDetailsRows: data.sponsorshipDetailsRows,
+                    submissionTimestamp: data.submissionTimestamp,
+                    rejectionMessage: data.rejectionMessage,
+                    reviewMessage: data.reviewMessage,
+                    eventDate: data.eventDate,
+                    eventDescription: data.eventDescription,
+                    eventTitle: data.eventTitle,
+                    organizingDepartment: data.organizingDepartment,
+                    proposalStatus: data.proposalStatus || 'Pending',
+                };
+            });
+            setEventProposals(proposalsList);
+        } catch (error) {
+            console.error("Error fetching proposals:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const authInstance = getAuth(app);
+        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+            let department = null;
+            if (user && user.email) {
+                const email = user.email;
+                console.log("Logged in user email:", email); // Log user email
+                if (hodEmailDepartmentMap.hasOwnProperty(email)) {
+                  department = hodEmailDepartmentMap[email as keyof typeof hodEmailDepartmentMap];
+                } else if (exceptionEmailDepartmentMap.hasOwnProperty(email)) {
+                  department = exceptionEmailDepartmentMap[email as keyof typeof exceptionEmailDepartmentMap];
+                }
+                setUserDepartment(department);
+                console.log("User Department set to:", department); // Log department after setting
+              }
+               else {
+                setUserDepartment(null);
+                console.log("No user logged in, department set to null."); // Log when no user
+            }
+        });
+        return () => unsubscribe();
+    }, [hodEmailDepartmentMap, exceptionEmailDepartmentMap]);
+
+    useEffect(() => {
+        console.log("useEffect for fetchProposals, userDepartment:", userDepartment); // Log userDepartment before fetchProposals call
+        if (userDepartment) { // Conditional fetch
+            fetchProposals(userDepartment);
+        } else {
+            setLoading(false); // Ensure loading is set to false even if no department to fetch
+            console.log("User department is null or undefined, skipping fetchProposals.");
+        }
+    }, [fetchProposals, userDepartment]);
+
+
+    const handleProposalClick = useCallback((proposal: Proposal) => {
+        setSelectedProposal(proposal);
+    }, []);
+
+    const closePopup = useCallback(() =>
+        {
+            setSelectedProposal(null);
+        }, []);
+
+        const handleUpdateStatus = useCallback(async (proposal: Proposal, newStatus: string, message: string = '') => { // message is now an argument
+            if (!proposal) return;
+
+
+            try {
+                const proposalRef = doc(db, 'eventProposals', proposal.id);
+                await updateDoc(proposalRef, {
+                    proposalStatus: newStatus,
+                    ...(newStatus === 'Rejected' && { rejectionMessage: message }),
+                    ...(newStatus === 'Review' && { reviewMessage: message }),
+                });
+                console.log(`Proposal ${proposal.id} status updated to ${newStatus}`);
+
+                // Send email via API
+                const updatedProposal = { ...proposal, status: newStatus, rejectionMessage: message, reviewMessage: message };
+                console.log('Sending update request to /api/sendmail...', updatedProposal);
+
+                const response = await fetch('/api/sendmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ proposal: updatedProposal, action: 'update', message: message }), // Include the message
+                });
+
+                console.log('API response status:', response.status);
+                const data = await response.json();
+                console.log('API response data:', data);
+
+
+                if (data.error) {
+                    throw new Error(data.error); // Correctly throw the error
+                }
+
+                // Update local state
+                setEventProposals(prevProposals =>
+                    prevProposals.map(p =>
+                        p.id === proposal.id ? { ...p, status: newStatus, rejectionMessage: message, reviewMessage:message } : p  //Important: update the local state of rejection/review message
+                    )
+                );
+                setSelectedProposal(null); // Close the popup
+                alert(`Proposal ${newStatus.toLowerCase()} successfully!`);
+
+            } catch (error) {
+                console.error("Error updating proposal status:", error);
+                if (error instanceof Error) {
+                    alert(`Error updating proposal status: ${error.message}`);
+                } else {
+                    alert('Error updating proposal status');
+                }
+
+            }
+        }, [setEventProposals]);
+
+
+        return (
+            <DashboardContent
+                eventProposals={eventProposals}
+                loading={loading}
+                selectedProposal={selectedProposal}
+                handleProposalClick={handleProposalClick}
+                closePopup={closePopup}
+                handleUpdateStatus={handleUpdateStatus}
+            />
+        );
+    }

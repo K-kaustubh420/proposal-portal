@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Line, Pie } from 'react-chartjs-2';
+import { ScriptableScaleContext } from 'chart.js'; // CORRECT IMPORT
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -12,22 +12,21 @@ import {
     Tooltip,
     Legend,
     ArcElement,
-    Filler
+    Filler,
+    TooltipItem,
+    ChartOptions,
+    GridLineOptions // Import GridLineOptions
 } from 'chart.js';
 import {
     ListChecks,
     Clock,
     XCircle,
     CheckCircle,
-    ArrowUpRight,
     Info,
     X,
-    Check,
-    Mail,
-    Inbox
 } from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Import getDoc
+import { collection, getDocs, doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
 
 ChartJS.register(
     CategoryScale,
@@ -41,8 +40,8 @@ ChartJS.register(
     Filler
 );
 
-// Chart options
-const lineOptions = {
+// --- Chart Options  ---
+const lineOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -59,21 +58,35 @@ const lineOptions = {
             titleFont: { size: 16, weight: 'bold' },
             padding: 10,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: TooltipItem<'line'>) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
-        chartArea: { backgroundColor: '#f9fafb' },
     },
     scales: {
         y: {
             type: 'linear',
             beginAtZero: true,
-            grid: {
-                borderColor: '#CBD5E0',
-                borderDash: [3, 3],
-                color: '#CBD5E0',
-                lineWidth: 1,
-            },
+            grid: { // No type assertion needed here!
+                color: (context: ScriptableScaleContext) => { // Explicitly type context
+                    if (context.tick.value === undefined) {
+                        return 'rgba(0,0,0,0)';
+                    }
+                    if (context.index % 2 === 0) {
+                        return 'rgba(203, 213, 224, 0.5)';
+                    } else {
+                        return 'rgba(0, 0, 0, 0)';
+                    }
+                },
+                lineWidth: (context: ScriptableScaleContext) => {  // Explicitly type context
+                    if (context.tick.value === undefined) {
+                        return 0;
+                    }
+                    if (context.index % 2 === 0) {
+                        return 1;
+                    }
+                    return 0;
+                }
+            } satisfies Partial<GridLineOptions>, // Use satisfies
             ticks: { color: '#4b5563', font: { size: 12 } }
         },
         x: {
@@ -105,7 +118,7 @@ const lineData = {
     }],
 };
 
-const pieDataOptions = {
+const pieDataOptions: ChartOptions<'pie'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -117,14 +130,31 @@ const pieDataOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: TooltipItem<'pie'>) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
     },
-    chartArea: { backgroundColor: '#f9fafb' }
 };
 
-// Proposal interface
+// --- Interfaces and Types ---
+
+interface FirestoreProposal extends DocumentData {
+    eventTitle: string;
+    organizingDepartment: string;
+    eventDate: string;
+    proposalStatus?: string;
+    category: string;
+    estimatedBudget: number;
+    convenerEmail: string;
+    eventDescription: string;
+    eventLocation?: string;
+    convenerName: string;
+    chiefGuestName?: string;
+    chiefGuestDesignation?: string;
+    events?: { eventTitle: string }[];
+    tags?: string[];
+}
+
 interface Proposal {
     id: string;
     title: string;
@@ -141,11 +171,11 @@ interface Proposal {
     chiefGuestName?: string;
     chiefGuestDesignation?: string;
     events?: { eventTitle: string }[];
-    tags?: string[]; // Add a 'tags' field
+    tags?: string[];
 }
 
-// Dynamic imports for chart components
-const LineChart = dynamic(() => Promise.resolve(Line), {
+// --- Dynamic Imports ---
+const LineChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), {
     ssr: false,
     loading: () => <p>Loading chart...</p>
 });
@@ -155,7 +185,8 @@ const PieChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie),
     loading: () => <p>Loading chart...</p>
 });
 
-// Loading and No Proposals Components
+// --- Helper Components  ---
+
 const LoadingComponent = () => (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
         Loading proposals...
@@ -168,11 +199,10 @@ const NoProposalsComponent = () => (
     </div>
 );
 
-// Yearly dropdown component
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event) => {
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -181,6 +211,7 @@ function YearlyDropdown() {
             className="select select-bordered select-sm bg-white text-gray-700"
             value={selectedYearly}
             onChange={handleChange}
+            aria-label='Yearly'
         >
             <option value="Yearly">Yearly</option>
             <option value="Monthly">Monthly</option>
@@ -189,6 +220,7 @@ function YearlyDropdown() {
     );
 }
 
+// --- Dashboard Content ---
 const DashboardContent: React.FC<{
     eventProposals: Proposal[];
     loading: boolean;
@@ -197,24 +229,24 @@ const DashboardContent: React.FC<{
     statusUpdateMessage: string | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
-    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string) => Promise<void>; // Add newTag
+    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string) => Promise<void>;
 }> = ({
     eventProposals,
     loading,
     selectedProposal,
+    isUpdatingStatus,
+    statusUpdateMessage,
+    handleProposalClick,
+    closePopup,
+    updateProposalStatus
 }) => {
 
-    // Filter for approved proposals ONLY
     const approvedProposals = eventProposals.filter(p => p.status === 'Approved');
-
-    // Calculate counts (based on tags)
     const approvedCount = approvedProposals.length;
     const reviewCount = approvedProposals.filter(p => p.tags?.includes('Review')).length;
     const rejectedCount = approvedProposals.filter(p => p.tags?.includes('Rejected')).length;
     const doneCount = approvedProposals.filter(p => p.tags?.includes('Done')).length;
 
-
-    // Pie chart data
     const pieData = {
         labels: ['Approved', 'Review', 'Rejected', 'Done'],
         datasets: [{
@@ -226,29 +258,26 @@ const DashboardContent: React.FC<{
         }],
     };
 
+    const [showLineChart, setShowLineChart] = useState(false);
+
     if (loading) {
         return <LoadingComponent />;
     }
 
     if (approvedProposals.length === 0) {
-        return (
-            <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
-                No approved proposals available.
-            </div>
-        );
+        return <NoProposalsComponent />;
     }
 
-    // Get badge class based on tags
     const getBadgeClass = (tags?: string[]) => {
         if (!tags) {
-            return 'badge-success'; // Default for Approved
+            return 'badge-success';
         }
         if (tags.includes('Done')) return 'badge-primary';
         if (tags.includes('Review')) return 'badge-info';
         if (tags.includes('Rejected')) return 'badge-error';
-        return 'badge-success'; // Default
+        return 'badge-success';
     };
-    // Get badge text based on tags.
+
     const getBadgeText = (tags?: string[]) => {
         if (!tags) {
             return 'Approved';
@@ -258,7 +287,6 @@ const DashboardContent: React.FC<{
         if (tags.includes('Rejected')) return 'Rejected';
         return 'Approved';
     };
-
 
     return (
         <>
@@ -327,7 +355,7 @@ const DashboardContent: React.FC<{
                                                     {approvedProposals.map((proposal) => (
                                                         <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
                                                             <td>
-                                                                <input type="checkbox" className="checkbox" />
+                                                                <input type="checkbox" className="checkbox"  aria-label='checkbox' />
                                                             </td>
                                                             <td>
                                                                 <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
@@ -352,6 +380,12 @@ const DashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
+                                            <button
+                                                onClick={() => setShowLineChart(!showLineChart)}
+                                                className="ml-2 btn btn-xs btn-outline"
+                                            >
+                                                {showLineChart ? "Show Pie Chart" : "Show Line Chart"}
+                                            </button>
                                             <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
                                                 <Info className="w-3.5 h-3.5" aria-hidden="true" color="currentColor" />
                                                 <span className="sr-only">Tooltip</span>
@@ -363,7 +397,11 @@ const DashboardContent: React.FC<{
                                         </div>
                                     </div>
                                     <div className="h-64 relative text-slate-800">
-                                        <PieChart data={pieData} options={pieDataOptions} />
+                                        {showLineChart ? (
+                                            <LineChart data={lineData} options={lineOptions} />
+                                        ) : (
+                                            <PieChart data={pieData} options={pieDataOptions} />
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -372,15 +410,13 @@ const DashboardContent: React.FC<{
                 </div>
             </div>
 
-            {/* Proposal Details Popup */}
             {selectedProposal && (
                 <>
-                    {/* Proposal Details Popup */}
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                         <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl">
                             <div className="flex justify-between items-start">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-4">{selectedProposal.title}</h2>
-                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
+                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label='closepopup'>
                                     <X size={24} />
                                 </button>
                             </div>
@@ -393,7 +429,7 @@ const DashboardContent: React.FC<{
                                 <p className="text-gray-700">
                                     <span className="font-semibold">Status:</span>
                                     <span className={`badge badge-sm ${getBadgeClass(selectedProposal.tags)}`}>
-                                        {getBadgeText(selectedProposal.tags)} {/* Use getBadgeText */}
+                                        {getBadgeText(selectedProposal.tags)}
                                     </span>
                                 </p>
                                 <p className="text-gray-700"><span className="font-semibold">Category:</span> {selectedProposal.category}</p>
@@ -432,7 +468,7 @@ const DashboardContent: React.FC<{
                                 </button>
                                 <button
                                     onClick={() => {
-                                        updateProposalStatus(selectedProposal, 'Approved', 'ReviewAndDone'); // First, mark as Review
+                                        updateProposalStatus(selectedProposal, 'Approved', 'ReviewAndDone');
 
                                     }}
                                     className="btn btn-primary text-white"
@@ -468,9 +504,7 @@ export default function EventPortal() {
             const proposalsCollection = collection(db, 'eventProposals');
             const proposalSnapshot = await getDocs(proposalsCollection);
             const proposalsList = proposalSnapshot.docs.map(doc => {
-                const data = doc.data();
-                // Initialize tags as an empty array if it's undefined
-                const tags = data.tags || [];
+                const data = doc.data() as FirestoreProposal;
                 return {
                     id: doc.id,
                     title: data.eventTitle,
@@ -487,14 +521,14 @@ export default function EventPortal() {
                     chiefGuestName: data.chiefGuestName,
                     chiefGuestDesignation: data.chiefGuestDesignation,
                     events: data.events || [],
-                    tags: tags, // Use initialized tags
-                    ...data,
+                    tags: data.tags || [],
                 };
             });
             setEventProposals(proposalsList);
-            setLoading(false);
         } catch (error) {
             console.error("Error fetching proposals:", error);
+            setStatusUpdateMessage("Error fetching proposals.  Please try again later.");
+        } finally {
             setLoading(false);
         }
     }, []);
@@ -509,8 +543,8 @@ export default function EventPortal() {
 
     const closePopup = useCallback(() => {
         setSelectedProposal(null);
+        setStatusUpdateMessage(null);
     }, []);
-
     const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, newTag?: string) => {
         if (isUpdatingStatus) return;
         setIsUpdatingStatus(true);
@@ -520,140 +554,101 @@ export default function EventPortal() {
             setEventProposals(currentProposals =>
                 currentProposals.map(proposal => {
                     if (proposal.id === proposalToUpdate.id) {
-                        let updatedTags = proposal.tags || [];  // Ensure tags exist
-                        // Add or remove the tag based on the action
+                        let updatedTags = proposal.tags || [];
                         if (newTag) {
                             if (newTag === 'ReviewAndDone') {
                                 updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                                if (!updatedTags.includes('Done')) {
-                                    updatedTags.push('Done');
-                                }
-                                if (!updatedTags.includes('Review')) {
-                                    updatedTags.push('Review');
-                                }
-                            }
-                            else if (newTag === 'Done' && updatedTags.includes("Review")) {
+                                if (!updatedTags.includes('Done')) updatedTags.push('Done');
+                                if (!updatedTags.includes('Review')) updatedTags.push('Review');
+                            } else if (newTag === 'Done' && updatedTags.includes("Review")) {
                                 updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                                if (!updatedTags.includes('Done')) {
-                                    updatedTags.push('Done'); // Add if not present
-                                }
-
-                            }
-                            else if (newTag === 'Review' && updatedTags.includes("Done")) {
-                                if (!updatedTags.includes('Review')) {
-                                    updatedTags.push('Review'); // Add if not present
-                                }
-
-                            }
-                            else if (!updatedTags.includes(newTag)) {
-                                updatedTags.push(newTag); // Add if not present
-
-                            }
-                            else {
-                                updatedTags = updatedTags.filter(tag => tag !== newTag); // Remove tag
+                                if (!updatedTags.includes('Done')) updatedTags.push('Done');
+                            } else if (newTag === 'Review' && updatedTags.includes("Done")) {
+                                if (!updatedTags.includes('Review')) updatedTags.push('Review');
+                            } else if (!updatedTags.includes(newTag)) {
+                                updatedTags.push(newTag);
+                            } else {
+                                updatedTags = updatedTags.filter(tag => tag !== newTag);
                             }
                         }
-                        return { ...proposal, status: newStatus, tags: updatedTags }; // Update both status and tags
-
+                        return { ...proposal, status: newStatus, tags: updatedTags };
                     }
                     return proposal;
                 })
             );
+
             setSelectedProposal(null);
 
             const proposalDocRef = doc(db, 'eventProposals', proposalToUpdate.id);
-            const updateData: any = { proposalStatus: newStatus };  // Use 'any' to allow dynamic updates
+            const updateData: Partial<FirestoreProposal> = { proposalStatus: newStatus };
 
-            // Only update tags if a new tag is provided
             if (newTag) {
-                if (newTag === 'ReviewAndDone') {
-                    updateData.tags = ['Review', 'Done']; // special case to apply the 'Review' tag
-                } else {
-                    // Get current tags from Firestore.  Crucially, we *must* fetch the *current*
-                    // tags from the database *before* updating, to avoid overwriting other
-                    // concurrent changes.
-                    const docSnap = await getDoc(proposalDocRef); // Use the imported getDoc
-                    if (docSnap.exists()) {
-                        const currentTags = docSnap.data().tags || [];
-                        let updatedTags = [...currentTags];
+                const docSnap = await getDoc(proposalDocRef);
+                if (docSnap.exists()) {
+                    const currentTags = docSnap.data().tags || [];
+                    let updatedTags = [...currentTags];
 
-                        if (newTag === 'ReviewAndDone') {
-                            updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                            if (!updatedTags.includes('Done')) {
-                                updatedTags.push('Done');
-                            }
-                            if (!updatedTags.includes('Review')) {
-                                updatedTags.push('Review');
-                            }
-                        }
-                        else if (newTag === 'Done' && updatedTags.includes("Review")) {
-                            updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                            if (!updatedTags.includes('Done')) {
-                                updatedTags.push('Done'); // Add if not present
-                            }
-
-                        }
-                        else if (newTag === 'Review' && updatedTags.includes("Done")) {
-                            if (!updatedTags.includes('Review')) {
-                                updatedTags.push('Review'); // Add if not present
-                            }
-
-                        }
-                        else if (!updatedTags.includes(newTag)) {
-                            updatedTags.push(newTag); // Add if not present
-
-                        }
-                        else {
-                            updatedTags = updatedTags.filter(tag => tag !== newTag); // Remove tag
-                        }
-
-
-                        updateData.tags = updatedTags;
-
+                    if (newTag === 'ReviewAndDone') {
+                        updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                        if (!updatedTags.includes('Done')) updatedTags.push('Done');
+                        if (!updatedTags.includes('Review')) updatedTags.push('Review');
+                    } else if (newTag === 'Done' && updatedTags.includes("Review")) {
+                        updatedTags = updatedTags.filter(tag => tag !== 'Review');
+                        if (!updatedTags.includes('Done')) updatedTags.push('Done');
+                    } else if (newTag === 'Review' && updatedTags.includes("Done")) {
+                        if (!updatedTags.includes('Review')) updatedTags.push('Review');
+                    } else if (!updatedTags.includes(newTag)) {
+                        updatedTags.push(newTag);
+                    } else {
+                        updatedTags = updatedTags.filter(tag => tag !== newTag);
                     }
+
+                    updateData.tags = updatedTags;
                 }
             }
 
             await updateDoc(proposalDocRef, updateData);
 
             const updatedProposal = { ...proposalToUpdate, status: newStatus, tags: updateData.tags || [] };
-            console.log('Sending update request to /api/sendmail...', updatedProposal);
             const response = await fetch('/api/sendmail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ proposal: updatedProposal, action: 'update' }),
             });
 
-            console.log('API response status:', response.status);
             const data = await response.json();
-            console.log('API response data:', data);
 
-            if (!response.ok) { // Check for HTTP error status
+            if (!response.ok) {
                 throw new Error(`API error: ${response.status} - ${data.error || 'Unknown error'}`);
             }
 
             if (data.error) {
                 throw new Error(data.error);
             }
-            if (newTag) {
-                if (newTag === 'ReviewAndDone') {
-                    setStatusUpdateMessage(`Proposal status updated to Review and then marked as Done. Email sent successfully!`);
-                } else {
-                    setStatusUpdateMessage(`Proposal tagged as ${newTag} and email sent successfully!`); // Show tag
-                }
-            }
-            else {
-                setStatusUpdateMessage(`Proposal status updated to ${newStatus} and email sent successfully!`);
 
-            }
-        } catch (error: any) {
+            setStatusUpdateMessage(newTag
+                ? (newTag === 'ReviewAndDone'
+                    ? `Proposal status updated to Review and then marked as Done. Email sent successfully!`
+                    : `Proposal tagged as ${newTag} and email sent successfully!`)
+                : `Proposal status updated to ${newStatus} and email sent successfully!`
+            );
+
+        } catch (error: unknown) {
             console.error("Error updating proposal status:", error);
-            setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
+            let errorMessage = "An unknown error occurred.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            setStatusUpdateMessage(`Error updating proposal status: ${errorMessage}`);
+
+            fetchProposals();
+
         } finally {
             setIsUpdatingStatus(false);
             setTimeout(() => setStatusUpdateMessage(null), 5000);
         }
-    }, [isUpdatingStatus]);
+    }, [isUpdatingStatus, fetchProposals]);
+
 
     return (
         <DashboardContent

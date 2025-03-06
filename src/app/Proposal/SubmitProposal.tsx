@@ -9,20 +9,28 @@ import { FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
 
+// Define the interface for a Detailed Budget Row
+interface DetailedBudgetRow {
+    id: number;
+    description: string;
+    quantity: string;
+    costPerUnit: string;
+    totalAmount: string;
+    mainCategory?: string; // Optional because it might be empty initially
+    subCategory?: string;  // Optional because it might be empty initially
+    locationType?: string; // Optional because it might be empty initially
+}
+
 
 export default function EventProposalForm() {
-  const { user } = useAuth(); // Get the logged-in user
-  // Initialize startDate to null initially
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState<Date | null>(null);
-
-  // Form field states (rest remain the same)
   const searchParams = useSearchParams();
   const [organizingDepartment, setOrganizingDepartment] = useState('');
   const [eventTitle, setEventTitle] = useState<string>('');
   const [eventDescription, setEventDescription] = useState('');
   const [durationEvent, setDurationEvent] = useState('');
- // const [startDate, setStartDate] = useState("");
-const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [category, setCategory] = useState('');
   const [designation, setDesignation] = useState('');
   const [estimatedBudget, setEstimatedBudget] = useState('');
@@ -38,36 +46,33 @@ const [endDate, setEndDate] = useState("");
   const [fundUniversity, setFundUniversity] = useState('');
   const [fundRegistration, setFundRegistration] = useState('');
   const [fundSponsorship, setFundSponsorship] = useState('');
-  const [proposalId, setProposalId] = useState<string | null>(null); // State to hold proposal ID for editing
+  const [proposalId, setProposalId] = useState<string | null>(null);
   const [fundOther, setFundOther] = useState('');
 
-  // State for Detailed Budget Rows (rest remain the same)
-  const [detailedBudgetRows, setDetailedBudgetRows] = useState([
+  // Use the DetailedBudgetRow interface for the state
+  const [detailedBudgetRows, setDetailedBudgetRows] = useState<DetailedBudgetRow[]>([
     { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
     { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
     { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
   ]);
 
-  const totalDetailedBudget = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
+  const totalDetailedBudget : number = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
-  // State for Sponsorship Details Rows (rest remain the same)
   const [sponsorshipRows, setSponsorshipRows] = useState([
     { id: 1, sponsorshipType: '', associatingAgencies: '' }
   ]);
-  // calculate the duration
+
   const calculateDuration = () => {
     if (!startDate || !endDate) return;
 
-    const start : Date = new Date(startDate);
-
-    const end : Date = new Date(endDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       setDurationEvent("Invalid date range");
       return;
     }
-
-    const diffMs = end - start;
+    const diffMs = end.getTime() - start.getTime();
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -75,88 +80,67 @@ const [endDate, setEndDate] = useState("");
     setDurationEvent(`${days} days, ${hours} hours, ${minutes} minutes`);
   };
 
-
-  // Function to add a new row to Detailed Budget
   const addDetailedBudgetRow = () => {
     setDetailedBudgetRows([...detailedBudgetRows, { id: detailedBudgetRows.length + 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' }]);
   };
 
-  // Function to delete a row from Detailed Budget (rest remain the same)
-  const deleteDetailedBudgetRow = (idToDelete) => {
+  const deleteDetailedBudgetRow = (idToDelete: number) => {
     setDetailedBudgetRows(detailedBudgetRows.filter(row => row.id !== idToDelete));
   };
 
-  // Function to handle changes in Detailed Budget Rows (rest remain the same)
-  const handleDetailedBudgetChange = (id, field, value) => {
+  const handleDetailedBudgetChange = (id: number, field: string, value: string ) => {
     const updatedRows = detailedBudgetRows.map(row => {
       if (row.id === id) {
-        const updatedRow = { ...row, [field]: value };
-
-        // Convert to numbers and calculate total
+        const updatedRow: DetailedBudgetRow = { ...row, [field]: value }; // Explicitly type updatedRow
         const quantity = parseFloat(updatedRow.quantity) || 0;
         const costPerUnit = parseFloat(updatedRow.costPerUnit) || 0;
-        updatedRow.totalAmount = quantity * costPerUnit;
-
+        updatedRow.totalAmount = String(quantity * costPerUnit); // Ensure totalAmount is a string
         return updatedRow;
       }
       return row;
     });
-
     setDetailedBudgetRows(updatedRows);
   };
 
-  // Function to add a new row to Sponsorship Details (rest remain the same)
   const addSponsorshipRow = () => {
     setSponsorshipRows([...sponsorshipRows, { id: sponsorshipRows.length + 1, sponsorshipType: '', associatingAgencies: '' }]);
   };
 
-  // Function to delete a row from Sponsorship Details (rest remain the same)
-  const deleteSponsorshipRow = (idToDelete) => {
+  const deleteSponsorshipRow = (idToDelete: number) => {
     setSponsorshipRows(sponsorshipRows.filter(row => row.id !== idToDelete));
   };
 
-  // Function to handle changes in Sponsorship Rows (rest remain the same)
-  const handleSponsorshipChange = (id, field, value) => {
+  const handleSponsorshipChange = (id: number, field: string, value: string) => {
     const updatedRows = sponsorshipRows.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     );
     setSponsorshipRows(updatedRows);
   };
 
-// function for form submission
-const handleSubmit = async (e) => {
-  e.preventDefault(); // Prevent default form submission
-
-  // Convert startDate and endDate to Date objects
-  const start = startDate ? new Date(startDate) : new Date();
-  const end = endDate ? new Date(endDate) : new Date();
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    alert("Invalid date selection. Please choose valid start and end dates.");
-    return;
-  }
-
-  // Calculate duration
-  const diffMs = end - start;
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-  const calculatedDuration = `${days} days, ${hours} hours, ${minutes} minutes`;
-
-  // Calculate total detailed budget
-
-  // Check if estimated budget matches
-  //if (totalDetailedBudget !== parseFloat(estimatedBudget)) {
- //   alert(`Error: Estimated Budget and Detailed Budget do not match! \nEstimated: ${estimatedBudget} \nDetailed: ${totalDetailedBudget}`);
- //   return; // Stop form submission
- // }
-
-  try {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> ) => {
+    e.preventDefault();
+      
     const start = startDate ? new Date(startDate) : new Date();
     const end = endDate ? new Date(endDate) : new Date();
+   
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      alert("Invalid date selection. Please choose valid start and end dates.");
+      return;
+    }
 
-    const proposalData = {
+    const diffMs = end.getTime() - start.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+
+    const calculatedDuration = `${days} days, ${hours} hours, ${minutes} minutes`;
+
+    try {
+      const start = startDate ? new Date(startDate) : new Date();
+      const end = endDate ? new Date(endDate) : new Date();
+
+      const proposalData = {
         organizingDepartment,
         eventTitle,
         eventDescription,
@@ -177,39 +161,36 @@ const handleSubmit = async (e) => {
         convenerName,
         convenerEmail,
         fundingDetails: {
-            universityFund: fundUniversity,
-            registrationFund: fundRegistration,
-            sponsorshipFund: fundSponsorship,
-            otherSourcesFund: fundOther,
+          universityFund: fundUniversity,
+          registrationFund: fundRegistration,
+          sponsorshipFund: fundSponsorship,
+          otherSourcesFund: fundOther,
         },
         detailedBudget: detailedBudgetRows,
         sponsorshipDetailsRows: sponsorshipRows,
         submissionTimestamp: new Date().toISOString(),
-        proposalStatus: 'Pending', // Default status for new submissions
-    };
+        proposalStatus: 'Pending',
+      };
 
-    const eventProposalsCollection = collection(db, 'eventProposals'); // Firestore collection reference
+      const eventProposalsCollection = collection(db, 'eventProposals');
 
-    if (proposalId) {
-        // Update existing proposal
+      if (proposalId) {
         const proposalRef = doc(db, 'eventProposals', proposalId);
         await updateDoc(proposalRef, proposalData);
         alert('Event proposal updated and resubmitted successfully!');
-    } else {
-        // Add new proposal
+      } else {
         await addDoc(eventProposalsCollection, proposalData);
         alert('Event proposal submitted successfully!');
-    }
+      }
 
-      sendMail(convenerEmail); // Call sendMail function after successful submission
+      sendMail(convenerEmail);
 
-      // Reset form fields
       setOrganizingDepartment('');
       setEventTitle('');
       setEventDescription('');
       setDurationEvent('');
       setStartDate(null);
-      setEndDate(""); // Reset end date as well
+      setEndDate(null);
       setCategory('');
       setDesignation('');
       setEstimatedBudget('');
@@ -226,102 +207,101 @@ const handleSubmit = async (e) => {
       setFundRegistration('');
       setFundSponsorship('');
       setFundOther('');
-      setProposalId(null); // Clear proposal ID after submission/update
+      setProposalId(null);
 
+      setDetailedBudgetRows([
+        { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+        { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
+        { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
+      ]);
+      setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
 
-    // Reset detailed budget rows
-    setDetailedBudgetRows([
-      { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
-      { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
-      { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
-    ]);
-    setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      alert('Failed to submit proposal. Please try again.');
+    }
+  };
 
-
-  } catch (error) {
-    console.error('Error submitting proposal:', error);
-    alert('Failed to submit proposal. Please try again.');
-  }
-};
-
-  //sendmail function (outside handleSubmit but inside component)
   const sendMail = async (recipientEmail: string) => {
     const response = await fetch('/api/formmail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            subject: "Event Proposal Submitted Successfully",
-            message: "Dear Convener,\n\nYour event proposal has been submitted successfully and is currently pending review. We will notify you of any updates regarding your proposal.\n\nThank you for your submission.\n\nSincerely,\nSRM Event Management System",
-            recipientEmail: recipientEmail, // Use the recipientEmail parameter
-        }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: "Event Proposal Submitted Successfully",
+        message: "Dear Convener,\n\nYour event proposal has been submitted successfully and is currently pending review. We will notify you of any updates regarding your proposal.\n\nThank you for your submission.\n\nSincerely,\nSRM Event Management System",
+        recipientEmail: recipientEmail,
+      }),
     });
 
     if (response.ok) {
-        alert("Confirmation email sent to convener!");
+      alert("Confirmation email sent to convener!");
     } else {
-        console.error("Error sending confirmation email:", await response.text());
-        alert("Error sending confirmation email.");
+      console.error("Error sending confirmation email:", await response.text());
+      alert("Error sending confirmation email.");
     }
-};
-useEffect(() => {
-  setEstimatedBudget(totalDetailedBudget);
-}, [totalDetailedBudget]);
-// Set default email when user logs in
-useEffect(() => {
-  if (user?.email) {
-    setConvenerEmail(user.email);
-  }
-}, [user]);
+  };
 
-useEffect(() => {
+  useEffect(() => {
+    setEstimatedBudget(totalDetailedBudget.toString() || '');
+  }, [totalDetailedBudget]);
+  
+
+  useEffect(() => {
+    if (user?.email) {
+      setConvenerEmail(user.email);
+    }
+  }, [user]);
+
+  useEffect(() => {
     const editMode = searchParams.get('edit');
     if (editMode === 'true') {
-        // Parse proposal data from query parameters
-        const proposalData = {
-            id: searchParams.get('proposalId'),
-            title: searchParams.get('title'),
-            organizer: searchParams.get('organizer'),
-            date: searchParams.get('date'),
-            status: searchParams.get('status'),
-            category: searchParams.get('category'),
-            cost: searchParams.get('cost'),
-            email: searchParams.get('email'),
-            description: searchParams.get('description'),
-            location: searchParams.get('location'),
-            convenerName: searchParams.get('convenerName'),
-            convenerEmail: searchParams.get('convenerEmail'),
-            organizingDepartment: searchParams.get('organizer'), // Assuming 'organizer' in query params is department
-            eventTitle: searchParams.get('title'),
-            eventDescription: searchParams.get('description'),
-            category: searchParams.get('category'),
-            estimatedBudget: searchParams.get('cost'),
-            convenerName: searchParams.get('convenerName'),
-            convenerEmail: searchParams.get('convenerEmail'),
-            chiefGuestName: searchParams.get('chiefGuestName'),
-            chiefGuestDesignation: searchParams.get('chiefGuestDesignation'),
-            chiefGuestAddress: searchParams.get('chiefGuestAddress'),
-            chiefGuestPhone: searchParams.get('chiefGuestPhone'),
-        };
+      const proposalData = {
+        id: searchParams.get('proposalId'),
+        title: searchParams.get('title'),
+        organizer: searchParams.get('organizer'),
+        date: searchParams.get('date'),
+        status: searchParams.get('status'),
+        category: searchParams.get('category'),
+        cost: searchParams.get('cost'),
+        email: searchParams.get('email'),
+        description: searchParams.get('description'),
+        location: searchParams.get('location'),
+        convenerName: searchParams.get('convenerName'),
+        convenerEmail: searchParams.get('convenerEmail'),
+        organizingDepartment: searchParams.get('organizer'),
+        eventTitle: searchParams.get('title'),
+        eventDescription: searchParams.get('description'),
+        startDate: searchParams.get('startDate'),
+        endDate: searchParams.get('endDate'),
+        duration: searchParams.get('duration'),
+        pastEvents: searchParams.get('pastEvents'),
+        relevantDetails: searchParams.get('relevantDetails'),
+        estimatedBudget: searchParams.get('cost'),
+        chiefGuestName: searchParams.get('chiefGuestName'),
+        chiefGuestDesignation: searchParams.get('chiefGuestDesignation'),
+        chiefGuestAddress: searchParams.get('chiefGuestAddress'),
+        chiefGuestPhone: searchParams.get('chiefGuestPhone'),
+      };
 
-        // Set form field values from proposalData
-        setProposalId(proposalData.id as string || null); // Set proposal ID for editing
-        setOrganizingDepartment(proposalData.organizingDepartment || '');
-        setEventTitle(proposalData.eventTitle || '');
-        setEventDescription(proposalData.eventDescription || '');
-        setCategory(proposalData.category || '');
-        setEstimatedBudget(proposalData.estimatedBudget as string || '');
-        setConvenerName(proposalData.convenerName || '');
-        setConvenerEmail(proposalData.convenerEmail || '');
-        setChiefGuestName(proposalData.chiefGuestName || '');
-        setChiefGuestDesignation(proposalData.chiefGuestDesignation || '');
-        setChiefGuestAddress(proposalData.chiefGuestAddress || '');
-        setChiefGuestPhone(proposalData.chiefGuestPhone || '');
+      setProposalId(proposalData.id as string || null);
+      setOrganizingDepartment(proposalData.organizingDepartment || '');
+      setEventTitle(proposalData.eventTitle || '');
+      setEventDescription(proposalData.eventDescription || '');
+      setCategory(proposalData.category || '');
+      setEstimatedBudget(proposalData.estimatedBudget as string || '');
+      setConvenerName(proposalData.convenerName || '');
+      setConvenerEmail(proposalData.convenerEmail || '');
+      setChiefGuestName(proposalData.chiefGuestName || '');
+      setChiefGuestDesignation(proposalData.chiefGuestDesignation || '');
+      setChiefGuestAddress(proposalData.chiefGuestAddress || '');
+      setChiefGuestPhone(proposalData.chiefGuestPhone || '');
 
-        if (proposalData.date) {
-            setStartDate(new Date(proposalData.date));
-        }
+      if (proposalData.date) {
+        setStartDate(new Date(proposalData.date));
+      }
     }
-}, [user]);
+  }, [user, searchParams]);
+
   return (
     <>
       <div style={{
@@ -341,36 +321,35 @@ useEffect(() => {
                     Organizing Department
                   </label>
                   <select
-  id="organizing-department"
-  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-  value={organizingDepartment}
-  onChange={(e) => setOrganizingDepartment(e.target.value)}
-  required
->
-  <option value="">Select Department</option>
-  <optgroup label="Engineering and Technology">
-    <option value="Aerospace Engineering">Aerospace Engineering</option>
-    <option value="Automobile Engineering">Automobile Engineering</option>
-    <option value="Biomedical Engineering">Biomedical Engineering</option>
-    <option value="Biotechnology">Biotechnology</option>
-    <option value="Chemical Engineering">Chemical Engineering</option>
-    <option value="Civil Engineering">Civil Engineering</option>
-    <option value="Computer Science and Engineering">Computer Science and Engineering</option>
-    <option value="Ctech">Ctech</option>
-    <option value="Cintel">Cintel</option>
-    <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
-    <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-    <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
-    <option value="Food Process Engineering">Food Process Engineering</option>
-    <option value="Genetic Engineering">Genetic Engineering</option>
-    <option value="Information Technology">Information Technology</option>
-    <option value="Mechanical Engineering">Mechanical Engineering</option>
-    <option value="Mechatronics Engineering">Mechatronics Engineering</option>
-    <option value="Software Engineering">Software Engineering</option>
-  </optgroup>
-</select>
-
-
+                    id="organizing-department"
+                    name="organizing-department"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={organizingDepartment}
+                    onChange={(e) => setOrganizingDepartment(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <optgroup label="Engineering and Technology">
+                      <option value="Aerospace Engineering">Aerospace Engineering</option>
+                      <option value="Automobile Engineering">Automobile Engineering</option>
+                      <option value="Biomedical Engineering">Biomedical Engineering</option>
+                      <option value="Biotechnology">Biotechnology</option>
+                      <option value="Chemical Engineering">Chemical Engineering</option>
+                      <option value="Civil Engineering">Civil Engineering</option>
+                      <option value="Computer Science and Engineering">Computer Science and Engineering</option>
+                      <option value="Ctech">Ctech</option>
+                      <option value="Cintel">Cintel</option>
+                      <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+                      <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                      <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
+                      <option value="Food Process Engineering">Food Process Engineering</option>
+                      <option value="Genetic Engineering">Genetic Engineering</option>
+                      <option value="Information Technology">Information Technology</option>
+                      <option value="Mechanical Engineering">Mechanical Engineering</option>
+                      <option value="Mechatronics Engineering">Mechatronics Engineering</option>
+                      <option value="Software Engineering">Software Engineering</option>
+                    </optgroup>
+                  </select>
                 </div>
 
                 <div>
@@ -380,6 +359,7 @@ useEffect(() => {
                   <input
                     type="text"
                     id="event-title"
+                    name="event-title"
                     placeholder="Enter Event Title"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={eventTitle ?? ""}
@@ -388,138 +368,135 @@ useEffect(() => {
                   />
                 </div>
                 <div>
-  <label
-    className="block text-gray-700 bg-white text-sm font-bold mb-2"
-    htmlFor="event-description"
-  >
-    Event Description
-  </label>
-  <textarea
-    id="event-description"
-    placeholder="Enter Event Description"
-    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-    value={eventDescription}
-    onChange={(e) => {
-      const words = e.target.value.split(/\s+/).filter(word => word !== "").length;
-      if (words <= 200) {
-        setEventDescription(e.target.value);
-      }
-    }}
-    required
-  />
-  <p className="text-sm text-gray-500 mt-1">
-    {eventDescription.split(/\s+/).filter(word => word !== "").length} / 200 words
-  </p>
-</div>
+                  <label
+                    className="block text-gray-700 bg-white text-sm font-bold mb-2"
+                    htmlFor="event-description"
+                  >
+                    Event Description
+                  </label>
+                  <textarea
+                    id="event-description"
+                    name="event-description"
+                    placeholder="Enter Event Description"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={eventDescription}
+                    onChange={(e) => {
+                      const words = e.target.value.split(/\s+/).filter(word => word !== "").length;
+                      if (words <= 200) {
+                        setEventDescription(e.target.value);
+                      }
+                    }}
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    {eventDescription.split(/\s+/).filter(word => word !== "").length} / 200 words
+                  </p>
+                </div>
+
+                <div className="bg-transparent p-6  w-full max-w-xl mx-auto">
+                  <h2 className="text-base font-bold text-gray-800 flex items-left gap-2">
+                    <FaCalendarAlt className="text-blue-500" /> Event Schedule
+                  </h2>
+
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex-1">
+                      <label className="block text-gray-700 text-sm font-semibold mb-1" htmlFor="start-date">
+                        Start Date & Time
+                      </label>
+                      <DatePicker
+                        id="start-date"
+                        selected={startDate}
+                        onChange={(date) => {
+                          setStartDate(date);
+                          calculateDuration();
+                        }}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="w-full px-4 py-2 bg-transparent border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="w-[2px] h-12 bg-gray-300 mx-4"></div>
+
+                    <div className="flex-1">
+                      <label className="block text-gray-700 text-sm font-semibold mb-1" htmlFor="end-date">
+                        End Date & Time
+                      </label>
+                      <DatePicker
+                        id="end-date"
+                         selected={endDate} 
+                        onChange={(date) => {
+                          setEndDate(date);
+                          calculateDuration();
+                        }}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="w-full px-4 bg-transparent py-2 border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {durationEvent && (
+                    <p className="mt-4 text-center text-gray-800 font-semibold bg-blue-50 px-4 py-2 rounded-lg">
+                      ⏳ Duration: {durationEvent}
+                    </p>
+                  )}
+                </div>
 
 
-<div className="bg-transparent p-6  w-full max-w-xl mx-auto">
-  {/* Header */}
-  <h2 className="text-base font-bold text-gray-800 flex items-left gap-2">
-    <FaCalendarAlt className="text-blue-500" /> Event Schedule
-  </h2>
+                <div>
+                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="category">
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    <option value="conference_national">Conference - National</option>
+                    <option value="conference_international">Conference - International</option>
+                    <option value="fdp">FDPs</option>
+                    <option value="workshop">Workshops</option>
+                    <option value="winter_summer_school">Winter / Summer Schools</option>
+                    <option value="mdp_pdp">MDP / PDP</option>
+                    <option value="student_programme">Student Related Programmes</option>
+                    <option value="alumni_programme">Alumni Related Programmes</option>
+                    <option value="outreach_programme">Outreach Programmes</option>
+                    <option value="value_added_course">Value Added Courses</option>
+                    <option value="association_activity">Association Activities</option>
+                    <option value="counselling_activity">Counselling Activities</option>
+                    <option value="commemoration_day">International / National Commemoration Days</option>
+                    <option value="upskilling_non_teaching">Upskilling for Non-Teaching</option>
+                    <option value="industrial_conclave">Industrial Conclave</option>
+                    <option value="patent_commercialisation">Patent Commercialisation</option>
+                    <option value="lecture_series_industry_expert">Lecture Series - Industry Experts</option>
 
-  {/* Date Pickers Row */}
-  <div className="flex items-center justify-between mt-4">
-    {/* Start Date */}
-    <div className="flex-1">
-      <label className="block text-gray-700 text-sm font-semibold mb-1">
-        Start Date & Time
-      </label>
-      <DatePicker
-        selected={startDate}
-        onChange={(date) => {
-          setStartDate(date);
-          calculateDuration();
-        }}
-        showTimeSelect
-        dateFormat="Pp"
-        className="w-full px-4 py-2 bg-transparent border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
-
-    {/* Divider */}
-    <div className="w-[2px] h-12 bg-gray-300 mx-4"></div>
-
-    {/* End Date */}
-    <div className="flex-1">
-      <label className="block text-gray-700 text-sm font-semibold mb-1">
-        End Date & Time
-      </label>
-      <DatePicker
-        selected={endDate}
-        onChange={(date) => {
-          setEndDate(date);
-          calculateDuration();
-        }}
-        showTimeSelect
-        dateFormat="Pp"
-        className="w-full px-4 bg-transparent py-2 border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
-  </div>
-
-  {/* Duration Below */}
-  {durationEvent && (
-    <p className="mt-4 text-center text-gray-800 font-semibold bg-blue-50 px-4 py-2 rounded-lg">
-      ⏳ Duration: {durationEvent}
-    </p>
-  )}
-</div>
-
-
-              <div>
-                <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="category">
-                  Category
-                </label>
-                <select
-                  id="category"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  required
-                >
-    <option value="">Select Category</option>
-    <option value="conference_national">Conference - National</option>
-    <option value="conference_international">Conference - International</option>
-    <option value="fdp">FDPs</option>
-    <option value="workshop">Workshops</option>
-    <option value="winter_summer_school">Winter / Summer Schools</option>
-    <option value="mdp_pdp">MDP / PDP</option>
-    <option value="student_programme">Student Related Programmes</option>
-    <option value="alumni_programme">Alumni Related Programmes</option>
-    <option value="outreach_programme">Outreach Programmes</option>
-    <option value="value_added_course">Value Added Courses</option>
-    <option value="association_activity">Association Activities</option>
-    <option value="counselling_activity">Counselling Activities</option>
-    <option value="commemoration_day">International / National Commemoration Days</option>
-    <option value="upskilling_non_teaching">Upskilling for Non-Teaching</option>
-    <option value="industrial_conclave">Industrial Conclave</option>
-    <option value="patent_commercialisation">Patent Commercialisation</option>
-    <option value="lecture_series_industry_expert">Lecture Series - Industry Experts</option>
-
-                </select>
-              </div>
+                  </select>
+                </div>
 
                 <div>
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="designation">
                     Designation
                   </label>
                   <select
-  id="designation"
-  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-  value={designation}
-  onChange={(e) => setDesignation(e.target.value)}
-  required
->
-  <option value="" disabled>Select your designation</option>
-  <option value="Professor">Professor</option>
-  <option value="Assistant Professor">Assistant Professor</option>
-  <option value="Associate Professor">Associate Professor</option>
-  <option value="HOD">HOD (Head of Department)</option>
-  <option value="Dean">Dean</option>
-</select>
-
+                    id="designation"
+                    name="designation"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select your designation</option>
+                    <option value="Professor">Professor</option>
+                    <option value="Assistant Professor">Assistant Professor</option>
+                    <option value="Associate Professor">Associate Professor</option>
+                    <option value="HOD">HOD (Head of Department)</option>
+                    <option value="Dean">Dean</option>
+                  </select>
                 </div>
 
 
@@ -529,6 +506,7 @@ useEffect(() => {
                   </label>
                   <textarea
                     id="sponsorship-details"
+                    name="sponsorship-details"
                     placeholder="Details about potential sponsors or collaborations"
                     rows="3"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
@@ -543,6 +521,7 @@ useEffect(() => {
                   </label>
                   <textarea
                     id="past-events"
+                    name="past-events"
                     placeholder="List any past relevant events organized by the department (2021-2024)"
                     rows="3"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
@@ -557,6 +536,7 @@ useEffect(() => {
                   </label>
                   <textarea
                     id="relevant-details"
+                    name="relevant-details"
                     placeholder="Include any other details that might be relevant to your proposal"
                     rows="3"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
@@ -571,6 +551,7 @@ useEffect(() => {
                   <input
                     type="text"
                     id="chief-guest-name"
+                    name="chief-guest-name"
                     placeholder="Enter Name"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={chiefGuestName}
@@ -586,6 +567,7 @@ useEffect(() => {
                   <input
                     type="text"
                     id="chief-guest-designation"
+                    name="chief-guest-designation"
                     placeholder="Enter Designation"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={chiefGuestDesignation}
@@ -594,12 +576,13 @@ useEffect(() => {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
+                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-phone">
                     Chief Guest / Celebrity Phone no
                   </label>
                   <input
                     type="text"
                     id="chief-guest-phone"
+                    name="chief-guest-phone"
                     placeholder="Enter phone no"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={chiefGuestPhone}
@@ -609,12 +592,13 @@ useEffect(() => {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
+                  <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-address">
                     Chief Guest / Celebrity Address
                   </label>
                   <input
                     type="text"
                     id="chief-guest-address"
+                    name="chief-guest-address"
                     placeholder="Enter address"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={chiefGuestAddress}
@@ -623,9 +607,6 @@ useEffect(() => {
                   />
                 </div>
 
-
-
-
                 <div>
                   <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="convener-name">
                     Convener Name
@@ -633,6 +614,7 @@ useEffect(() => {
                   <input
                     type="text"
                     id="convener-name"
+                    name="convener-name"
                     placeholder="Enter Your Name"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={convenerName}
@@ -642,40 +624,40 @@ useEffect(() => {
                 </div>
 
                 <div>
-      <label
-        className="block text-gray-700 bg-white text-sm font-bold mb-2"
-        htmlFor="convener-email"
-      >
-        Convener Email
-      </label>
-      <input
-        type="email"
-        id="convener-email"
-        value={convenerEmail}
-        onChange={(e) => setConvenerEmail(e.target.value)}
-        className="border bg-transparent p-2 text-black rounded w-full"
-        readOnly
-       / >
-      {/* Other parts of your component */}
-    </div>
+                  <label
+                    className="block text-gray-700 bg-white text-sm font-bold mb-2"
+                    htmlFor="convener-email"
+                  >
+                    Convener Email
+                  </label>
+                  <input
+                    type="email"
+                    id="convener-email"
+                    name="convener-email"
+                    value={convenerEmail}
+                    onChange={(e) => setConvenerEmail(e.target.value)}
+                    className="border bg-transparent p-2 text-black rounded w-full"
+                    readOnly
+                  />
+                </div>
                 <div>
-  <label
-    className="block text-gray-700 bg-white text-sm font-bold mb-2"
-    htmlFor="estimated-budget"
-  >
-    Total Estimated Budget (₹)
-  </label>
-  <input
-    type="number"
-    id="estimated-budget"
-    placeholder="Total Budget"
-    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-    value={totalDetailedBudget} // Automatically filled from totalDetailedBudget
-    onChange={(e) => setEstimatedBudget(e.target.value)}
-    readOnly // Makes it non-editable
-  />
-</div>
-
+                  <label
+                    className="block text-gray-700 bg-white text-sm font-bold mb-2"
+                    htmlFor="estimated-budget"
+                  >
+                    Total Estimated Budget (₹)
+                  </label>
+                  <input
+                    type="number"
+                    id="estimated-budget"
+                    name="estimated-budget"
+                    placeholder="Total Budget"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    value={totalDetailedBudget}
+                    onChange={(e) => setEstimatedBudget(e.target.value)}
+                    readOnly
+                  />
+                </div>
 
                 <div className="mt-8">
                   <h3 className="text-xl font-bold text-gray-800 mb-4">Funding Details (₹)</h3>
@@ -684,7 +666,7 @@ useEffect(() => {
                       <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="fund-university">
                         University Fund
                       </label>
-                      <input type="number" id="fund-university" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                      <input type="number" id="fund-university" name="fund-university" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                         value={fundUniversity}
                         onChange={(e) => setFundUniversity(e.target.value)}
                       />
@@ -693,7 +675,7 @@ useEffect(() => {
                       <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="fund-registration">
                         Registration Fund
                       </label>
-                      <input type="number" id="fund-registration" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                      <input type="number" id="fund-registration" name="fund-registration" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                         value={fundRegistration}
                         onChange={(e) => setFundRegistration(e.target.value)}
                       />
@@ -702,7 +684,7 @@ useEffect(() => {
                       <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="fund-sponsorship">
                         Sponsorship Fund
                       </label>
-                      <input type="number" id="fund-sponsorship" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                      <input type="number" id="fund-sponsorship" name="fund-sponsorship" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                         value={fundSponsorship}
                         onChange={(e) => setFundSponsorship(e.target.value)}
                       />
@@ -711,7 +693,7 @@ useEffect(() => {
                       <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="fund-other">
                         Other Sources Fund
                       </label>
-                      <input type="number" id="fund-other" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                      <input type="number" id="fund-other" name="fund-other" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                         value={fundOther}
                         onChange={(e) => setFundOther(e.target.value)}
                       />
@@ -739,10 +721,10 @@ useEffect(() => {
                             <td className="px-4 py-1">{row.id}</td>
                             <td className="px-3 py-2">
                               <div className="flex items-center justify-between p-3 rounded-lg w-full">
-
-                                {/* Main Category Dropdown (Left) */}
                                 <div className="w-1/3 pr-2">
+                                  <label htmlFor={`main-category-${row.id}`} className="sr-only">Main Category for row {row.id}</label>
                                   <select
+                                    id={`main-category-${row.id}`}
                                     className="select select-bordered w-full text-gray-700 font-medium bg-gray-100 hover:bg-white transition focus:ring-2 focus:ring-blue-500"
                                     value={row.mainCategory || ""}
                                     onChange={(e) => handleDetailedBudgetChange(row.id, 'mainCategory', e.target.value)}
@@ -759,9 +741,10 @@ useEffect(() => {
                                   </select>
                                 </div>
 
-                                {/* Subcategory Dropdown (Middle) */}
                                 <div className="w-1/3 px-2">
+                                  <label htmlFor={`sub-category-${row.id}`} className="sr-only">Subcategory for row {row.id}</label>
                                   <select
+                                    id={`sub-category-${row.id}`}
                                     className="select select-bordered w-full text-gray-700 font-medium bg-gray-100 hover:bg-white transition focus:ring-2 focus:ring-blue-500"
                                     value={row.subCategory || ""}
                                     onChange={(e) => handleDetailedBudgetChange(row.id, 'subCategory', e.target.value)}
@@ -832,46 +815,51 @@ useEffect(() => {
                                   </select>
                                 </div>
 
-                                {/* Domestic / International Radio Buttons (Right) */}
                                 <div className="w-1/3 pl-2">
-  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition mb-2">
-    <input
-      type="radio"
-      name={`location-${row.id}`}
-      value="Domestic"
-      className="radio radio-primary"
-      checked={row.locationType === "Domestic"}
-      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
-    />
-    <span className="text-sm">Domestic</span>
-  </label>
-  <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
-    <input
-      type="radio"
-      name={`location-${row.id}`}
-      value="International"
-      className="radio radio-primary"
-      checked={row.locationType === "International"}
-      onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
-    />
-    <span className="text-sm">International</span>
-  </label>
-</div>
-
-
+                                  <div role="group" aria-labelledby={`location-type-label-${row.id}`}>
+                                    <span id={`location-type-label-${row.id}`} className="block text-gray-700 text-sm font-semibold mb-1">Location Type</span>
+                                    <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition mb-2">
+                                      <input
+                                        type="radio"
+                                        name={`location-${row.id}`}
+                                        value="Domestic"
+                                        className="radio radio-primary"
+                                        checked={row.locationType === "Domestic"}
+                                        onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+                                      />
+                                      <span className="text-sm">Domestic</span>
+                                    </label>
+                                    <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition">
+                                      <input
+                                        type="radio"
+                                        name={`location-${row.id}`}
+                                        value="International"
+                                        className="radio radio-primary"
+                                        checked={row.locationType === "International"}
+                                        onChange={(e) => handleDetailedBudgetChange(row.id, 'locationType', e.target.value)}
+                                      />
+                                      <span className="text-sm">International</span>
+                                    </label>
+                                  </div>
+                                </div>
                               </div>
                             </td>
-
-                            <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.quantity} onChange={(e) => handleDetailedBudgetChange(row.id, 'quantity', e.target.value)} /></td>
-                            <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.costPerUnit} onChange={(e) => handleDetailedBudgetChange(row.id, 'costPerUnit', e.target.value)} /></td>
-                            <td className="px-4 py-2"><input type="number" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-gray-200 leading-tight focus:outline-none focus:shadow-outline" value={row.totalAmount || 0} readOnly />
+                            <td className="px-4 py-2">
+                              <label htmlFor={`quantity-${row.id}`} className="sr-only">Quantity for row {row.id}</label>
+                              <input type="number" id={`quantity-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.quantity} onChange={(e) => handleDetailedBudgetChange(row.id, 'quantity', e.target.value)} /></td>
+                            <td className="px-4 py-2">
+                              <label htmlFor={`cost-per-unit-${row.id}`} className="sr-only">Cost per unit for row {row.id}</label>
+                              <input type="number" id={`cost-per-unit-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.costPerUnit} onChange={(e) => handleDetailedBudgetChange(row.id, 'costPerUnit', e.target.value)} /></td>
+                            <td className="px-4 py-2">
+                              <label htmlFor={`total-amount-${row.id}`} className="sr-only">Total amount for row {row.id} (Read-only)</label>
+                              <input type="number" id={`total-amount-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-gray-200 leading-tight focus:outline-none focus:shadow-outline" value={row.totalAmount || 0} readOnly />
                             </td>
-
                             <td className="px-4 py-2">
                               <button
                                 type="button"
                                 onClick={() => deleteDetailedBudgetRow(row.id)}
                                 className="btn btn-sm btn-circle btn-error text-white"
+                                aria-label={`Delete budget row ${row.id}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -897,13 +885,18 @@ useEffect(() => {
                       <tbody>
                         {sponsorshipRows.map((row) => (
                           <tr key={row.id} className="border-b border-gray-200">
-                            <td className="border-b border-gray-200 px-4 py-2"><input type="text" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.sponsorshipType} onChange={(e) => handleSponsorshipChange(row.id, 'sponsorshipType', e.target.value)} /></td>
-                            <td className="border-b border-gray-200 px-4 py-2"><input type="text" className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.associatingAgencies} onChange={(e) => handleSponsorshipChange(row.id, 'associatingAgencies', e.target.value)} /></td>
+                            <td className="border-b border-gray-200 px-4 py-2">
+                              <label htmlFor={`sponsorship-type-${row.id}`} className="sr-only">Sponsorship Type for row {row.id}</label>
+                              <input type="text" id={`sponsorship-type-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.sponsorshipType} onChange={(e) => handleSponsorshipChange(row.id, 'sponsorshipType', e.target.value)} /></td>
+                            <td className="border-b border-gray-200 px-4 py-2">
+                              <label htmlFor={`associating-agencies-${row.id}`} className="sr-only">Associating Agencies for row {row.id}</label>
+                              <input type="text" id={`associating-agencies-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.associatingAgencies} onChange={(e) => handleSponsorshipChange(row.id, 'associatingAgencies', e.target.value)} /></td>
                             <td className="px-4 py-2">
                               <button
                                 type="button"
                                 onClick={() => deleteSponsorshipRow(row.id)}
                                 className="btn btn-sm btn-circle btn-error text-white"
+                                aria-label={`Delete sponsorship row ${row.id}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>

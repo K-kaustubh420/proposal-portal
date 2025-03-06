@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
+import { TooltipItem } from 'chart.js';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -40,49 +41,7 @@ ChartJS.register(
 );
 
 // Chart options
-interface LineOptions {
-    responsive: boolean;
-    maintainAspectRatio: boolean;
-    plugins: {
-        legend: { display: boolean };
-        tooltip: {
-            backgroundColor: string;
-            bodyColor: string;
-            titleColor: string;
-            borderColor: string;
-            borderWidth: number;
-            intersect: boolean;
-            mode: string;
-            bodyFont: { size: number };
-            titleFont: { size: number; weight: number };
-            padding: number;
-            callbacks: {
-                label: (context: { label: string; formattedValue: string }) => string;
-            };
-        };
-        chartArea: { backgroundColor: string };
-    };
-    scales: {
-        y: {
-            type: string;
-            beginAtZero: boolean;
-            grid: {
-                borderColor: string;
-                borderDash: number[];
-                color: string;
-                lineWidth: number;
-            };
-            ticks: { color: string; font: { size: number } };
-        };
-        x: {
-            grid: { display: boolean };
-            ticks: { color: string; font: { size: number } };
-        };
-    };
-    elements: { line: { tension: number } };
-}
-
-const lineOptions: LineOptions = {
+const lineOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -94,19 +53,21 @@ const lineOptions: LineOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             intersect: false,
-            mode: 'index',
-            bodyFont: { size: 14 },
-            titleFont: { size: 16, weight: 700 },
+            mode: 'index' as const,
+            bodyFont: { size: 14, weight: "normal" as const },
+            titleFont: { size: 16, weight: 'bold' as const },
             padding: 10,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: TooltipItem<'line'>) => { // Use TooltipItem<'line'>
+                    return `${context.label}: ${context.formattedValue} Proposals`;
+                },
             },
         },
         chartArea: { backgroundColor: '#f9fafb' },
     },
     scales: {
         y: {
-            type: 'linear',
+            type: 'linear' as const,
             beginAtZero: true,
             grid: {
                 borderColor: '#CBD5E0',
@@ -146,31 +107,11 @@ const lineData = {
 };
 
 
-//
-interface PieDataOptions {
-    responsive: boolean;
-    maintainAspectRatio: boolean;
-    plugins: {
-        legend: { position: string; labels: { color: string } };
-        tooltip: {
-            backgroundColor: string;
-            bodyColor: string;
-            titleColor: string;
-            borderColor: string;
-            borderWidth: number;
-            callbacks: {
-                label: (context: { label: string; formattedValue: string }) => string;
-            };
-        };
-    };
-    chartArea: { backgroundColor: string };
-}
-
-const pieDataOptions: PieDataOptions = {
+const pieDataOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-        legend: { position: 'bottom', labels: { color: '#4b5563' } },
+        legend: { position: 'bottom' as const, labels: { color: '#4b5563' } },
         tooltip: {
             backgroundColor: '#ffffff',
             bodyColor: '#2D3748',
@@ -178,7 +119,9 @@ const pieDataOptions: PieDataOptions = {
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: TooltipItem<'pie'>) => {
+                     return `${context.label}: ${context.formattedValue} Proposals`;
+                }
             },
         },
     },
@@ -202,7 +145,7 @@ interface Proposal {
     chiefGuestName?: string;
     chiefGuestDesignation?: string;
     designation: string;
-    detailedBudget: number;
+    detailedBudget: number | { mainCategory: string; subCategory: string; totalAmount: number }[]; // Corrected type
     durationEvent: string;
     estimatedBudget: number;
     eventDate: string;
@@ -210,13 +153,18 @@ interface Proposal {
     eventEndDate: string;
     eventStartDate: string;
     eventTitle: string;
-    fundingDetails?: string;
+    fundingDetails?: {
+        registrationFund?: number;
+        sponsorshipFund?: number;
+        universityFund?: number;
+        otherSourcesFund?: number;
+    };
     organizingDepartment: string;
     pastEvents?: string[];
     proposalStatus: string;
     relevantDetails?: string;
-    sponsorshipDetails?: string;
-    sponsorshipDetailsRows?: { [key: string]: string | number }[];  // Assuming sponsorship details rows are structured data
+    sponsorshipDetails?: string[];  // Now accepts an array of strings
+    sponsorshipDetailsRows?: { [key: string]: string | number }[];
     submissionTimestamp: string;
 }
 
@@ -247,24 +195,24 @@ const NoProposalsComponent = () => (
 // Yearly dropdown component
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
-
-    const handleChange = (event: { target: { value: React.SetStateAction<string>; }; }) => {
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => { // Correct type
         setSelectedYearly(event.target.value);
     };
 
     return (
         <select
-        className="select select-bordered select-sm bg-white text-gray-700"
-        value={selectedYearly}
-        onChange={handleChange}
-    >
-        <option value="Yearly">Yearly</option> {/* Added value attribute */}
-        <option value="Monthly">Monthly</option> {/* Added value attribute */}
-        <option value="Weekly">Weekly</option>   {/* Added value attribute */}
-        <option value="Quarterly">Quarterly</option> {/* Added Quarterly option */}
-        <option value="Semesterwise">Semesterwise</option> {/* Added Semesterwise option */}
-        <option value="AcademicYearly">Academic Yearly</option> {/* Added Academic Yearly option */}
-    </select>
+            className="select select-bordered select-sm bg-white text-gray-700"
+            value={selectedYearly}
+            onChange={handleChange}
+             aria-label='Yearly'
+        >
+            <option value="Yearly">Yearly</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Quarterly">Quarterly</option>
+            <option value="Semesterwise">Semesterwise</option>
+            <option value="AcademicYearly">Academic Yearly</option>
+        </select>
     );
 }
 
@@ -440,7 +388,7 @@ const DashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
-                                           {/* <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
+                                            {/* <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
                                                 <Info className="w-3.5 h-3.5" aria-hidden="true" color="currentColor" />
                                                 <span className="sr-only">Tooltip</span>
                                             </button> */}
@@ -464,25 +412,31 @@ const DashboardContent: React.FC<{
                 </div>
                 <div className="space-y-3">
                     {recentAppliedProposals.map(proposal => (
-                        <div 
-                            key={proposal.id} 
-                            className="flex items-center justify-between cursor-pointer" 
+                        <div
+                            key={proposal.id}
+                            className="flex items-center justify-between cursor-pointer"
                             onClick={() => handleProposalClick(proposal)}
                         >
                             <div className="flex items-center">
                                 <div className="avatar mr-3">
                                 <div className="mask mask-squircle w-8 h-8">
-  {parseInt(proposal.id) % 3 === 0 ? (
+  {typeof proposal.id === 'number' && (proposal.id % 3 === 0) ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img 
-      src={`/avatar${(parseInt(proposal.id) % 3) + 1}.png`} 
-      onError={(e) => e.target.style.display = "none"} 
-      alt={proposal.title || "Avatar"} 
+    <img
+      src={`/avatar${(proposal.id % 3) + 1}.png`}
+      onError={(e) => {
+        if (e.currentTarget instanceof HTMLImageElement) {
+          e.currentTarget.style.display = "none";
+        }
+      }}
+      alt={proposal.title || "Avatar"}
       className="w-full h-full object-cover"
     />
   ) : (
     <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
-      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
+      <span className="text-xs font-bold">
+        {proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}
+      </span>
     </div>
   )}
 </div>
@@ -501,49 +455,9 @@ const DashboardContent: React.FC<{
                 </div>
             </div>
         </div>
-
-                                {/* Recently Approved Proposals List 
-                                <div className="card shadow-md rounded-lg bg-white">
-                                    <div className="card-body">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="card-title text-lg font-bold text-gray-700">Recently Approved Proposals</h2>
-                                            <a href="#" className="text-sm text-blue-500 hover:underline">See All Approved</a>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {recentApprovedProposals.map(proposal => (
-                                                <div key={proposal.id} className="flex items-center justify-between" onClick={() => handleProposalClick(proposal)} style={{ cursor: 'pointer' }}>
-                                                    <div className="flex items-center">
-                                                        <div className="avatar mr-3">
-                                                        <div className="mask mask-squircle w-8 h-8">
-  {proposal.id % 3 === 0 ? (
-    <img 
-      src={`/avatar${(proposal.id % 3) + 1}.png`} 
-      onError={(e) => e.target.style.display = "none"} 
-      alt={proposal.title || "Avatar"} 
-      className="w-full h-full object-cover"
-    />
-  ) : (
-    <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
-      <span className="text-xs font-bold">{proposal.convenerEmail?.substring(0, 2).toUpperCase() || "NA"}</span>
-    </div>
-  )}
-</div>
-
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-semibold text-gray-600">{proposal.organizer}</div>
-                                                            <div className="text-sm text-gray-500">{proposal.title}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`badge badge-sm badge-success`}>Approved</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div> */}
-                            </div>
-                        </div>
-                    </div>
+           </div>
+            </div>
+             </div>
                 </div>
 
                 {selectedProposal && (
@@ -563,8 +477,8 @@ const DashboardContent: React.FC<{
  >
                             <div className="flex justify-between rounded-md items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
-                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
-                                    <X className="h-6 w-6" />
+                                <button type='button' onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label=' Close  Pop-up'>
+                                    <X className="h-6 w-6" aria-hidden='true' />
                                 </button>
                             </div>
 
@@ -646,7 +560,7 @@ const DashboardContent: React.FC<{
     </div>
 )}
 
-{selectedProposal.sponsorshipDetails && Array.isArray(selectedProposal.sponsorshipDetails) && (
+                                {selectedProposal.sponsorshipDetails && Array.isArray(selectedProposal.sponsorshipDetails) && (
     <div className="mt-4 p-4 rounded-md">
         <p className="text-gray-700 font-semibold">Sponsorship Details:</p>
         <ul className="text-gray-600 list-disc list-inside">
@@ -656,19 +570,20 @@ const DashboardContent: React.FC<{
         </ul>
     </div>
 )}
-
-{selectedProposal.detailedBudget && selectedProposal.detailedBudget.length > 0 && (
-    <div className="mt-4  p-4 rounded-md">
-        <p className="text-gray-700 font-semibold">Detailed Budget:</p>
-        <ul className="list-disc list-inside text-gray-600">
-            {selectedProposal.detailedBudget.map((item, index) => (
-                <li key={index}>
-                    {item.mainCategory} - {item.subCategory} (${item.totalAmount.toLocaleString()})
-                </li>
-            ))}
-        </ul>
-    </div>
-)}
+                                {Array.isArray(selectedProposal.detailedBudget) ? (
+                                    selectedProposal.detailedBudget.length > 0 && (
+                                        <div className="mt-4  p-4 rounded-md">
+                                            <p className="text-gray-700 font-semibold">Detailed Budget:</p>
+                                            <ul className="list-disc list-inside text-gray-600">
+                                                {selectedProposal.detailedBudget.map((item, index) => (
+                                                    <li key={index}>
+                                                        {item.mainCategory} - {item.subCategory} (${item.totalAmount.toLocaleString()})
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )
+                                ) : null}
 
 {selectedProposal.fundingDetails && (
     <div className="mt-4  p-4 rounded-md">
@@ -757,35 +672,38 @@ export default function EventPortal() {
             const proposalSnapshot = await getDocs(proposalsCollection);
             const proposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data();
+                const  detailedBudgetData = Array.isArray(data.detailedBudget)
+        ? data.detailedBudget
+        : [];
                 return {
                     id: doc.id,
-    title: data.eventTitle,
-    organizer: data.organizingDepartment,
-    date: data.eventDate,
-    status: data.proposalStatus || 'Pending',
-    category: data.category,
-    cost: data.estimatedBudget,
-    email: data.convenerEmail,
-    description: data.eventDescription,
-    location: data.eventLocation,
-    convenerName: data.convenerName,
-    convenerEmail: data.convenerEmail,
-    chiefGuestName: data.chiefGuestName,
-    chiefGuestDesignation: data.chiefGuestDesignation,
-    designation: data.designation,
-    detailedBudget: data.detailedBudget,
-    durationEvent: data.durationEvent,
-    estimatedBudget: data.estimatedBudget,
-    eventEndDate: data.eventEndDate,
-    eventStartDate: data.eventStartDate,
-    fundingDetails: data.fundingDetails,
-    pastEvents: data.pastEvents,
-    relevantDetails: data.relevantDetails,
-    sponsorshipDetails: data.sponsorshipDetails,
-    sponsorshipDetailsRows: data.sponsorshipDetailsRows,
-    submissionTimestamp: data.submissionTimestamp,
-    ...data,
-                };
+                    title: data.eventTitle,
+                    organizer: data.organizingDepartment,
+                    date: data.eventDate,
+                    status: data.proposalStatus || 'Pending',
+                    category: data.category,
+                    cost: data.estimatedBudget,
+                    email: data.convenerEmail,
+                    description: data.eventDescription,
+                    location: data.eventLocation,
+                    convenerName: data.convenerName,
+                    convenerEmail: data.convenerEmail,
+                    chiefGuestName: data.chiefGuestName,
+                    chiefGuestDesignation: data.chiefGuestDesignation,
+                    designation: data.designation,
+                    detailedBudget:detailedBudgetData,
+                    durationEvent: data.durationEvent,
+                    estimatedBudget: data.estimatedBudget,
+                    eventEndDate: data.eventEndDate,
+                    eventStartDate: data.eventStartDate,
+                    fundingDetails: data.fundingDetails,
+                    pastEvents: data.pastEvents,
+                    relevantDetails: data.relevantDetails,
+                    sponsorshipDetails: data.sponsorshipDetails,
+                    sponsorshipDetailsRows: data.sponsorshipDetailsRows,
+                    submissionTimestamp: data.submissionTimestamp,
+                    ...data,
+                } as Proposal; // Explicitly cast to Proposal
             });
             setEventProposals(proposalsList);
             setLoading(false);
@@ -804,7 +722,7 @@ export default function EventPortal() {
         setSelectedProposal(proposal);
     }, []);
 
-    const closePopup = useCallback(() => {
+    const closePopup  = useCallback(() => {
         setSelectedProposal(null);
     }, []);
 
@@ -849,7 +767,12 @@ export default function EventPortal() {
 
         } catch (error: unknown) { // Explicitly type the error
             console.error("Error updating proposal status:", error);
-            setStatusUpdateMessage(`Error updating proposal status: ${error.message}`);
+            if (error instanceof Error) {
+                setStatusUpdateMessage(`Error updating proposal status: ${error.message}`); // Access error.message safely
+            } else {
+                setStatusUpdateMessage(`Error updating proposal status: An unexpected error occurred.`);
+            }
+
         } finally {
             setIsUpdatingStatus(false);
             setTimeout(() => setStatusUpdateMessage(null), 5000);

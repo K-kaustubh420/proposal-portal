@@ -1,6 +1,7 @@
+// ./src/components/Navbar.tsx
 "use client"
 import { RxCross2 } from "react-icons/rx";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaGoogle } from "react-icons/fa";
 import { useRouter } from 'next/navigation';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
@@ -8,55 +9,33 @@ import { app } from '@/firebase/config';
 import Image from 'next/image';
 import Link from 'next/link';
 import { User } from "firebase/auth";
+import React from 'react'; // Import React
 
 const Navbar = () => {
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const [loginError, setLoginError] = useState(null);
-  
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const [user, setUser] = useState<User | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        routeUser(currentUser.email); // Route user after login
-      }
-    });
-    return () => unsubscribe();
-  }, [router]); // Removed pathname dependency
-
-    useEffect(() => {
-        if (isClient && user && user.email) {
-          routeUser(user.email);
-        }
-    }, [isClient, user, router]);
-
-  const toggleLoginPopup = () => {
-    setIsLoginPopupOpen(!isLoginPopupOpen);
-    setLoginError(null);
-  };
-
-  const isExceptionEmail = (email: string) => {
+  const isExceptionEmail = useCallback((email: string) => {
     const exceptionEmails = [
       "kkaustubh92@gmail.com",
       "kk6682@srmist.edu.in",
       "kn3959@srmist.edu.in",
-      "neupanekiran512@gmail.com", 
+      "neupanekiran512@gmail.com",
       "neupanekiran450@gmail.com",
       "namasteportraits@gmailcom",
       "rn8638@srmist.edu.in",
       "vm2486@srmist.edu.in",
     ];
     return exceptionEmails.includes(email);
-  };
+  }, []);
 
-  const routeUser = (email: string | null | undefined) => {
+  const routeUser = useCallback((email: string | null | undefined) => {
     if (!email) return;
 
     if (isExceptionEmail(email)) {
@@ -77,7 +56,31 @@ const Navbar = () => {
     } else {
       router.push('/fadashboard'); // Faculty route
     }
+  }, [isExceptionEmail, router]);
+
+  useEffect(() => {
+    setIsClient(true);
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        routeUser(currentUser.email); // Route user after login
+      }
+    });
+    return () => unsubscribe();
+  }, [router, routeUser]);
+
+    useEffect(() => {
+        if (isClient && user && user.email) {
+          routeUser(user.email);
+        }
+    }, [isClient, user, router, routeUser]);
+
+  const toggleLoginPopup = () => {
+    setIsLoginPopupOpen(!isLoginPopupOpen);
+    setLoginError(null);
   };
+
 
     const signInWithGoogle = async () => {
         try {
@@ -95,14 +98,18 @@ const Navbar = () => {
              setIsLoginPopupOpen(false);
 
 
-        } catch (error: any) {
+        } catch (error : unknown) {
             console.error("Error signing in with Google", error);
-            setLoginError(error.message);
+            if (error instanceof Error) { // Type narrowing: Check if error is an instance of Error
+                setLoginError(error.message); // Now it's safe to access error.message
+            } else {
+                setLoginError("An unexpected error occurred during Google sign-in."); // Provide a generic error message for other types of errors
+            }
         }
     };
 
 
-  const signInWithEmailPassword = async (e) => {
+  const signInWithEmailPassword = async (e : React.FormEvent) => { // Changed type to React.FormEvent
     e.preventDefault();
     setLoginError(null);
 
@@ -115,9 +122,13 @@ const Navbar = () => {
             await signInWithEmailAndPassword(auth, email, password);
             setIsLoginPopupOpen(false);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error signing in with email and password", error);
-            setLoginError(error.message);
+            if (error instanceof Error) { // Type narrowing for email/password sign-in as well
+                setLoginError(error.message);
+            } else {
+                setLoginError("An unexpected error occurred during email/password sign-in.");
+            }
         }
   };
 
@@ -193,6 +204,7 @@ const Navbar = () => {
             <button
               onClick={toggleLoginPopup}
               className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700"
+              aria-label="Loginpopup"
             >
               <RxCross2 size={24} />
             </button>
@@ -207,6 +219,7 @@ const Navbar = () => {
               <button
                 onClick={signInWithGoogle}
                 className="p-3 bg-green-100 px-3 py-3 rounded-full"
+                 aria-label="singin button"
               >
                 <FaGoogle size={20} />
               </button>

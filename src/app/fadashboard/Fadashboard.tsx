@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { Line } from 'react-chartjs-2';
 import { motion } from "framer-motion";
 import Link from 'next/link';
+import Image from "next/image";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -14,7 +15,9 @@ import {
     Tooltip,
     Legend,
     ArcElement,
-    Filler
+    Filler,
+    ChartOptions, // Import ChartOptions
+    Plugin
 } from 'chart.js';
 import {
     ListChecks,
@@ -22,10 +25,12 @@ import {
     XCircle,
     CheckCircle,
     ArrowUpRight,
-    X} from 'lucide-react';
+    X
+} from 'lucide-react';
 import { db, app } from '@/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { TooltipItem } from 'chart.js'; // Import TooltipItem
 
 ChartJS.register(
     CategoryScale,
@@ -39,7 +44,41 @@ ChartJS.register(
     Filler
 );
 
-const lineOptions = {
+// **Inline Plugin for Background Color**
+const chartAreaBackgroundColor: Plugin<'line'> = { // Corrected type
+    id: 'chartAreaBackgroundColor',
+    beforeDraw: (chart) => {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) {
+            // This can happen during initialization
+            return;
+        }
+        ctx.save();
+        ctx.fillStyle = '#f9fafb'; // Your desired background color
+        ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+        ctx.restore();
+    },
+};
+
+const chartAreaBackgroundColorPie: Plugin<'pie'> = { // Corrected type
+    id: 'chartAreaBackgroundColorPie',
+    beforeDraw: (chart) => {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) {
+            // This can happen during initialization
+            return;
+        }
+        ctx.save();
+        ctx.fillStyle = '#f9fafb'; // Your desired background color
+        ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+        ctx.restore();
+    },
+};
+
+
+
+// Define the options using ChartOptions<'line'>
+const lineOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -56,19 +95,18 @@ const lineOptions = {
             titleFont: { size: 16, weight: 'bold' },
             padding: 10,
             callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
+                label: (context: TooltipItem<'line'>) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
-        chartArea: { backgroundColor: '#f9fafb' },
     },
     scales: {
         y: {
             type: 'linear',
             beginAtZero: true,
             grid: {
-                borderColor: '#CBD5E0',
-                borderDash: [3, 3],
-                color: '#CBD5E0',
+                // borderColor: '#CBD5E0', // REMOVE THIS LINE
+                
+                color: '#CBD5E0', // This is the correct property
                 lineWidth: 1,
             },
             ticks: { color: '#4b5563', font: { size: 12 } }
@@ -81,7 +119,27 @@ const lineOptions = {
     elements: { line: { tension: 0.4 } }
 };
 
-// **Initial** lineData (will be updated dynamically)
+
+const pieDataOptions: ChartOptions<'pie'> = { // And here for the pie chart
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { position: 'bottom', labels: { color: '#4b5563' } },
+        tooltip: {
+            backgroundColor: '#ffffff',
+            bodyColor: '#2D3748',
+            titleColor: '#2D3748',
+            borderColor: '#CBD5E0',
+            borderWidth: 1,
+            callbacks: {
+                label: (context: TooltipItem<'pie'>) => `${context.label}: ${context.formattedValue} Proposals`, // Type context here too!
+            },
+        },
+       // chartArea: { backgroundColor: '#f9fafb' } Removed chartArea
+
+    },
+
+};
 const lineData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
@@ -102,27 +160,7 @@ const lineData = {
         segment: { borderColor: '#3b82f6', borderWidth: 3 },
     }],
 };
-
-
-const pieDataOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: { position: 'bottom', labels: { color: '#4b5563' } },
-        tooltip: {
-            backgroundColor: '#ffffff',
-            bodyColor: '#2D3748',
-            titleColor: '#2D3748',
-            borderColor: '#CBD5E0',
-            borderWidth: 1,
-            callbacks: {
-                label: (context) => `${context.label}: ${context.formattedValue} Proposals`,
-            },
-        },
-    },
-    chartArea: { backgroundColor: '#f9fafb' }
-};
-
+// ... (rest of your imports and component code) ...
 interface Proposal {
     id: string;
     title: string;
@@ -157,7 +195,7 @@ const LoadingComponent = () => (
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
 
-    const handleChange = (event: any) => {
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => { // Type the event
         setSelectedYearly(event.target.value);
     };
 
@@ -166,6 +204,7 @@ function YearlyDropdown() {
             className="select select-bordered select-sm bg-white text-gray-700"
             value={selectedYearly}
             onChange={handleChange}
+             aria-label='Yearly'
         >
             <option value="Yearly">Yearly</option>
             <option value="Monthly">Monthly</option>
@@ -314,7 +353,8 @@ const MyDashboardContent: React.FC<{
                                         </div>
                                     </div>
                                     <div className="h-72 relative">
-                                        <LineChart data={updatedLineData} options={lineOptions} />
+                                         {/* Pass the plugin to the plugins array */}
+                                        <LineChart data={updatedLineData} options={lineOptions} plugins={[chartAreaBackgroundColor]} />
                                     </div>
                                     <div className="flex justify-between items-center border-t pt-5 mt-6">
                                         <button className="text-sm font-medium text-gray-500 text-center inline-flex items-center" type="button">
@@ -371,10 +411,7 @@ const MyDashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
-                                            {/* <button type="button" data-tooltip-target="data-tooltip-pie" data-tooltip-placement="bottom" className="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 rounded-lg text-sm">
-                                                <Info className="w-3.5 h-3.5" aria-hidden="true" color="currentColor" />
-                                                <span className="sr-only">Tooltip</span>
-                                            </button> */}
+                                            
                                             <div id="data-tooltip-pie" role="tooltip" className="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-gray-900 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 tooltip dark:bg-slate-200">
                                                 Status of your event proposals
                                                 <div className="tooltip-arrow bg-white" data-popper-arrow></div>
@@ -382,7 +419,8 @@ const MyDashboardContent: React.FC<{
                                         </div>
                                     </div>
                                     <div className="h-64 relative text-slate-800">
-                                        <PieChart data={pieData} options={pieDataOptions} />
+                                         {/* Pass the plugin here as well */}
+                                        <PieChart data={pieData} options={pieDataOptions}  plugins={[chartAreaBackgroundColorPie]}/>
                                     </div>
                                 </div>
 
@@ -399,12 +437,14 @@ const MyDashboardContent: React.FC<{
                                                         <div className="flex items-center">
                                                             <div className="avatar mr-3">
                                                                 <div className="mask mask-squircle w-8 h-8">
-                                                                    {proposal.id % 3 === 0 ? (
-                                                                        <img
+                                                                    {typeof proposal.id === 'number' && (proposal.id % 3 === 0) ? (
+                                                                        <Image
                                                                             src={`/avatar${(proposal.id % 3) + 1}.png`}
-                                                                            onError={(e) => e.target.style.display = "none"}
                                                                             alt={proposal.title || "Avatar"}
-                                                                            className="w-full h-full object-cover"
+                                                                            width={32}  // Important: Set width and height for Next/Image
+                                                                            height={32}
+                                                                            placeholder="blur" // Optional: Add a blur placeholder
+                                                                            blurDataURL="/placeholder.png" //  A very small, blurred version of your image
                                                                         />
                                                                     ) : (
                                                                         <div className="bg-neutral text-neutral-content w-full h-full flex items-center justify-center rounded-full">
@@ -431,12 +471,7 @@ const MyDashboardContent: React.FC<{
                             </div>
                         </div>
                     </div>
-                    {/* <div className="sticky bottom-4 right-4 flex justify-end">
-                        <Link href="/Proposal" className="btn btn-primary btn-lg rounded-full shadow-md hover:shadow-lg text-white font-bold flex items-center space-x-2">
-                            <Plus className="h-5 w-5" />
-                            <span>Create Proposal</span>
-                        </Link>
-                    </div> */}
+                
                 </div>
 
 
@@ -457,7 +492,7 @@ const MyDashboardContent: React.FC<{
                         >
                             <div className="flex justify-between rounded-md items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-800">Proposal Details</h2>
-                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800">
+                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label='closepopup'>
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
@@ -499,7 +534,7 @@ const MyDashboardContent: React.FC<{
                                 {selectedProposal.status === 'Review' && (
                                     <div className="mt-6">
                                         <Link
-                                            href={{ pathname: '/Proposal', query: { proposalId: selectedProposal.id, edit: 'true', ...selectedProposal } }}
+                                            href={{ pathname: '/Proposal', query: { proposalId: selectedProposal.id, edit: 'true', eventTitle: selectedProposal.title, organizingDepartment:selectedProposal.organizer, eventDate: new Date(selectedProposal.date).toISOString(), category:selectedProposal.category, estimatedBudget:selectedProposal.cost, convenerEmail:selectedProposal.email, eventDescription:selectedProposal.description, eventLocation:selectedProposal.location, convenerName:selectedProposal.convenerName, convenerEmail1:selectedProposal.convenerEmail} }}
                                             className="btn btn-sm btn-primary rounded-full"
                                         >Edit and Resend</Link>
                                     </div>
