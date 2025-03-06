@@ -111,6 +111,7 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error('Error processing request:', error); // Existing error log
         console.error('Detailed error:', error); // ADDED LOGGING: Log the full error object
-        return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 }); // Include error details in response
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: 'Internal server error', details: errorMessage }, { status: 500 }); // Include error details in response
     }
 }
