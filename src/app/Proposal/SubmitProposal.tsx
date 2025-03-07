@@ -508,7 +508,7 @@ export default function EventProposalForm() {
                     id="sponsorship-details"
                     name="sponsorship-details"
                     placeholder="Details about potential sponsors or collaborations"
-                    rows="3"
+                    rows={3}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={sponsorshipDetails}
                     onChange={(e) => setSponsorshipDetails(e.target.value)}
@@ -523,7 +523,7 @@ export default function EventProposalForm() {
                     id="past-events"
                     name="past-events"
                     placeholder="List any past relevant events organized by the department (2021-2024)"
-                    rows="3"
+                    rows={3}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={pastEvents}
                     onChange={(e) => setPastEvents(e.target.value)}
@@ -538,7 +538,7 @@ export default function EventProposalForm() {
                     id="relevant-details"
                     name="relevant-details"
                     placeholder="Include any other details that might be relevant to your proposal"
-                    rows="3"
+                    rows={3}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                     value={relevantDetails}
                     onChange={(e) => setRelevantDetails(e.target.value)}
