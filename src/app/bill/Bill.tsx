@@ -1,11 +1,11 @@
 import React from 'react'
 
-const Billsumbit = () => {
+const Bill = () => {
   return (
     <div>
-      
+     
     </div>
   )
 }
 
-export default Billsumbit
+export default Bill
