@@ -16,7 +16,7 @@ import {
     Legend,
     ArcElement,
     Filler,
-    ChartOptions, // Import ChartOptions
+    ChartOptions,
     Plugin
 } from 'chart.js';
 import {
@@ -30,7 +30,7 @@ import {
 import { db, app } from '@/firebase/config';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { TooltipItem } from 'chart.js'; // Import TooltipItem
+import { TooltipItem } from 'chart.js';
 
 ChartJS.register(
     CategoryScale,
@@ -44,40 +44,30 @@ ChartJS.register(
     Filler
 );
 
-// **Inline Plugin for Background Color**
-const chartAreaBackgroundColor: Plugin<'line'> = { // Corrected type
+const chartAreaBackgroundColor: Plugin<'line'> = {
     id: 'chartAreaBackgroundColor',
     beforeDraw: (chart) => {
         const { ctx, chartArea } = chart;
-        if (!chartArea) {
-            // This can happen during initialization
-            return;
-        }
+        if (!chartArea) return;
         ctx.save();
-        ctx.fillStyle = '#f9fafb'; // Your desired background color
+        ctx.fillStyle = '#f9fafb';
         ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
         ctx.restore();
     },
 };
 
-const chartAreaBackgroundColorPie: Plugin<'pie'> = { // Corrected type
+const chartAreaBackgroundColorPie: Plugin<'pie'> = {
     id: 'chartAreaBackgroundColorPie',
     beforeDraw: (chart) => {
         const { ctx, chartArea } = chart;
-        if (!chartArea) {
-            // This can happen during initialization
-            return;
-        }
+        if (!chartArea) return;
         ctx.save();
-        ctx.fillStyle = '#f9fafb'; // Your desired background color
+        ctx.fillStyle = '#f9fafb';
         ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
         ctx.restore();
     },
 };
 
-
-
-// Define the options using ChartOptions<'line'>
 const lineOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -103,12 +93,7 @@ const lineOptions: ChartOptions<'line'> = {
         y: {
             type: 'linear',
             beginAtZero: true,
-            grid: {
-                // borderColor: '#CBD5E0', // REMOVE THIS LINE
-                
-                color: '#CBD5E0', // This is the correct property
-                lineWidth: 1,
-            },
+            grid: { color: '#CBD5E0', lineWidth: 1 },
             ticks: { color: '#4b5563', font: { size: 12 } }
         },
         x: {
@@ -120,7 +105,7 @@ const lineOptions: ChartOptions<'line'> = {
 };
 
 
-const pieDataOptions: ChartOptions<'pie'> = { // And here for the pie chart
+const pieDataOptions: ChartOptions<'pie'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -132,19 +117,17 @@ const pieDataOptions: ChartOptions<'pie'> = { // And here for the pie chart
             borderColor: '#CBD5E0',
             borderWidth: 1,
             callbacks: {
-                label: (context: TooltipItem<'pie'>) => `${context.label}: ${context.formattedValue} Proposals`, // Type context here too!
+                label: (context: TooltipItem<'pie'>) => `${context.label}: ${context.formattedValue} Proposals`,
             },
         },
-       // chartArea: { backgroundColor: '#f9fafb' } Removed chartArea
-
     },
-
 };
+
 const lineData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
         label: 'Monthly Submissions',
-        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // Initialized to zeros
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         borderColor: '#3b82f6',
         borderWidth: 3,
         fill: true,
@@ -160,7 +143,7 @@ const lineData = {
         segment: { borderColor: '#3b82f6', borderWidth: 3 },
     }],
 };
-// ... (rest of your imports and component code) ...
+
 interface Proposal {
     id: string;
     title: string;
@@ -177,6 +160,11 @@ interface Proposal {
     transport?: number;
     accommodation?: number;
     hall?: number;
+    chiefGuestName?: string; // Add chiefGuestName to Proposal Interface
+    chiefGuestDesignation?: string; // Add chiefGuestDesignation
+    chiefGuestEmail?: string; // Add chiefGuestEmail
+    chiefGuestPhone?: string; // Add chiefGuestPhone
+    chiefGuestAddress?: string; // Add chiefGuestAddress
 }
 
 const LineChart = dynamic(() => Promise.resolve(Line), {
@@ -197,8 +185,7 @@ const LoadingComponent = () => (
 
 function YearlyDropdown() {
     const [selectedYearly, setSelectedYearly] = useState("Yearly");
-
-    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => { // Type the event
+    const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedYearly(event.target.value);
     };
 
@@ -207,7 +194,7 @@ function YearlyDropdown() {
             className="select select-bordered select-sm bg-white text-gray-700"
             value={selectedYearly}
             onChange={handleChange}
-             aria-label='Yearly'
+            aria-label='Yearly'
         >
             <option value="Yearly">Yearly</option>
             <option value="Monthly">Monthly</option>
@@ -215,7 +202,6 @@ function YearlyDropdown() {
             <option value="Quaterly">Quaterly</option>
             <option value="Semesterly">Semesterly</option>
             <option value="Academic Yearly">Academic Yearly</option>
-
         </select>
     );
 }
@@ -257,45 +243,47 @@ const MyDashboardContent: React.FC<{
     };
 
     const recentAppliedProposals = userProposals.filter(p => p.status === 'Pending').slice().reverse();
-  //  const recentApprovedProposals = userProposals.filter(p => p.status === 'Approved').slice().reverse();
 
-    // Calculate monthly proposal counts
-    const monthlyCounts = Array(12).fill(0); // Initialize an array for each month
+    const monthlyCounts = Array(12).fill(0);
     userProposals.forEach(proposal => {
-      if (proposal.date) {
-        const proposalDate = new Date(proposal.date);  // Correctly parse the date string
-
-        // Check if proposalDate is a valid Date object
-        if (!isNaN(proposalDate.getTime())) {
-          const monthIndex = proposalDate.getMonth(); // 0-indexed (Jan = 0, Dec = 11)
-          monthlyCounts[monthIndex]++;
+        if (proposal.date) {
+            const proposalDate = new Date(proposal.date);
+            if (!isNaN(proposalDate.getTime())) {
+                monthlyCounts[proposalDate.getMonth()]++;
+            } else {
+                console.error("Invalid date format for proposal:", proposal);
+            }
         } else {
-          console.error("Invalid date format for proposal:", proposal);
+            console.warn("Proposal is missing date:", proposal);
         }
-      } else {
-        console.warn("Proposal is missing date:", proposal);
-      }
     });
 
-    const [transport, setTransport] = useState<number | null>(null);
-    const [accommodation, setAccommodation] = useState<number | null>(null);
-    const [hall, setHall] = useState<number | null>(null);
-
-    // Create a *new* lineData object with the updated counts
     const updatedLineData = {
-        ...lineData, // Copy the existing structure
+        ...lineData,
         datasets: [{
-            ...lineData.datasets[0], // Copy the existing dataset properties
-            data: monthlyCounts, // Update the data with the calculated counts
+            ...lineData.datasets[0],
+            data: monthlyCounts,
         }],
     };
 
-    const [chiefGuestSame, setChiefGuestSame] = useState(true); // Define the state variable
-    const [chiefGuestName, setChiefGuestName] = useState<string>(''); 
-    const [chiefGuestDesignation, setChiefGuestDesignation] = useState<string>(''); 
-    const [chiefGuestEmail, setChiefGuestEmail] = useState<string>(''); 
-    const [chiefGuestPhone, setChiefGuestPhone] = useState<string>(''); 
+    const [chiefGuestSame, setChiefGuestSame] = useState(true);
+    const [chiefGuestName, setChiefGuestName] = useState<string>('');
+    const [chiefGuestDesignation, setChiefGuestDesignation] = useState<string>('');
+    const [chiefGuestEmail, setChiefGuestEmail] = useState<string>('');
+    const [chiefGuestPhone, setChiefGuestPhone] = useState<string>('');
     const [chiefGuestAddress, setChiefGuestAddress] = useState<string>('');
+
+    useEffect(() => {
+        if (selectedProposal) {
+            // Initialize Chief Guest details from selectedProposal if available
+            setChiefGuestName(selectedProposal.chiefGuestName || '');
+            setChiefGuestDesignation(selectedProposal.chiefGuestDesignation || '');
+            setChiefGuestEmail(selectedProposal.chiefGuestEmail || '');
+            setChiefGuestPhone(selectedProposal.chiefGuestPhone || '');
+            setChiefGuestAddress(selectedProposal.chiefGuestAddress || '');
+        }
+    }, [selectedProposal]);
+
 
     if (loading) {
         return <LoadingComponent />;
@@ -303,7 +291,8 @@ const MyDashboardContent: React.FC<{
 
     return (
         <>
-            <div
+            {/* ... (rest of your dashboard UI - charts, stats, tables) ... */}
+             <div
                 className=""
                 style={{
                     backgroundImage: "url('/SRMIST-BANNER.jpg')",
@@ -427,7 +416,7 @@ const MyDashboardContent: React.FC<{
                                     <div className="flex justify-between mb-3">
                                         <div className="flex justify-center items-center">
                                             <h5 className="text-xl font-bold leading-none text-gray-700 pe-1">Proposal Status</h5>
-                                            
+
                                             <div id="data-tooltip-pie" role="tooltip" className="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-gray-900 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 tooltip dark:bg-slate-200">
                                                 Status of your event proposals
                                                 <div className="tooltip-arrow bg-white" data-popper-arrow></div>
@@ -487,7 +476,7 @@ const MyDashboardContent: React.FC<{
                             </div>
                         </div>
                     </div>
-                
+
                 </div>
 
 
@@ -534,7 +523,6 @@ const MyDashboardContent: React.FC<{
                                     <p className="text-gray-700 font-semibold">Status:</p>
                                     <p className="text-gray-600">{selectedProposal.status}</p>
                                 </div>
-                                {/* ** ADDED THIS SECTION ** */}
                                 {selectedProposal.status === 'Review' && (
                                     <div className="mt-6">
                                         <Link
@@ -546,130 +534,101 @@ const MyDashboardContent: React.FC<{
 
                                 {selectedProposal.status === 'Approved' && (
                                     <>
-                                        {(selectedProposal.hall === null || selectedProposal.hall === undefined || selectedProposal.accommodation === null || selectedProposal.accommodation === undefined || selectedProposal.transport === null || selectedProposal.transport === undefined) && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <p className="text-gray-700 text-sm font-semibold">Hall:</p>
-                                                        <input
-                                                            type="number"
-                                                            className="input input-bordered input-sm w-full"
-                                                            value={hall ?? ''}
-                                                            onChange={(e) => setHall(Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-700 text-sm font-semibold">Accommodation:</p>
-                                                        <input
-                                                            type="number"
-                                                            className="input input-bordered input-sm w-full"
-                                                            value={accommodation ?? ''}
-                                                            onChange={(e) => setAccommodation(Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-700 text-sm font-semibold">Transport:</p>
-                                                        <input
-                                                            type="number"
-                                                            className="input input-bordered input-sm w-full"
-                                                            value={transport ?? ''}
-                                                            onChange={(e) => setTransport(Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div>
-                                                        <p className="text-gray-700 text-sm font-semibold">Is Chief Guest the same?</p>
-                                                        <select
-                                                            className="select select-bordered select-sm w-full"
-                                                            onChange={(e) => setChiefGuestSame(e.target.value === 'yes')}
-                                                        >
-                                                            <option value="yes">Yes</option>
-                                                            <option value="no">No</option>
-                                                        </select>
-                                                    </div>
-                                                    {!chiefGuestSame && (
-                                                        <>
-                                                            <div>
-                                                                <p className="text-gray-700 text-sm font-semibold">Chief Guest Name:</p>
-                                                                <input
-                                                                    type="text"
-                                                                    className="input input-bordered input-sm w-full"
-                                                                    value={chiefGuestName}
-                                                                    onChange={(e) => setChiefGuestName(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-gray-700 text-sm font-semibold">Designation:</p>
-                                                                <input
-                                                                    type="text"
-                                                                    className="input input-bordered input-sm w-full"
-                                                                    value={chiefGuestDesignation}
-                                                                    onChange={(e) => setChiefGuestDesignation(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-gray-700 text-sm font-semibold">Email:</p>
-                                                                <input
-                                                                    type="email"
-                                                                    className="input input-bordered input-sm w-full"
-                                                                    value={chiefGuestEmail}
-                                                                    onChange={(e) => setChiefGuestEmail(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-gray-700 text-sm font-semibold">Phone:</p>
-                                                                <input
-                                                                    type="tel"
-                                                                    className="input input-bordered input-sm w-full"
-                                                                    value={chiefGuestPhone}
-                                                                    onChange={(e) => setChiefGuestPhone(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-gray-700 text-sm font-semibold">Address:</p>
-                                                                <input
-                                                                    type="text"
-                                                                    className="input input-bordered input-sm w-full"
-                                                                    value={chiefGuestAddress}
-                                                                    onChange={(e) => setChiefGuestAddress(e.target.value)}
-                                                                />
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                                <div className="col-span-1 md:col-span-2">
-                                                    <button
-                                                        className="btn btn-primary btn-sm mt-2 w-full"
-                                                        onClick={async () => {
-                                                            try {
-                                                                const proposalRef = doc(db, 'eventProposals', selectedProposal.id);
-                                                                await updateDoc(proposalRef, {
-                                                                    hall: hall,
-                                                                    accommodation: accommodation,
-                                                                    transport: transport,
-                                                                    ...(chiefGuestSame ? {} : {
-                                                                        chiefGuestName: chiefGuestName,
-                                                                        chiefGuestDesignation: chiefGuestDesignation,
-                                                                        chiefGuestEmail: chiefGuestEmail,
-                                                                        chiefGuestPhone: chiefGuestPhone,
-                                                                        chiefGuestAddress: chiefGuestAddress,
-                                                                    }),
-                                                                });
-                                                                closePopup();
-                                                                if (currentUserEmail) {
-                                                                    fetchUserProposals(currentUserEmail);
-                                                                }
-                                                            } catch (error) {
-                                                                console.error("Error updating proposal:", error);
-                                                            }
-                                                        }}
-                                                    >
-                                                        Submit
-                                                    </button>
-                                                </div>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <p className="text-gray-700 text-sm font-semibold">Is Chief Guest the same?</p>
+                                                <select
+                                                    className="select select-bordered select-sm w-full bg-inherit"
+                                                    onChange={(e) => setChiefGuestSame(e.target.value === 'yes')}
+                                                    value={chiefGuestSame ? 'yes' : 'no'}
+                                                    aria-label='Is Chief Guest the same?'
+                                                >
+                                                    <option value="yes">Yes</option>
+                                                    <option value="no">No</option>
+                                                </select>
                                             </div>
-                                        )}
+                                            {!chiefGuestSame && (
+                                                <>
+                                                    <div>
+                                                        <p className="text-gray-700 text-sm font-semibold">Chief Guest Name:</p>
+                                                        <input
+                                                            type="text"
+                                                            className="input input-bordered input-sm w-full bg-inherit"
+                                                            value={chiefGuestName}
+                                                            onChange={(e) => setChiefGuestName(e.target.value)}
+                                                            aria-label='Cheif Guest name'
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-700 text-sm font-semibold">Designation:</p>
+                                                        <input
+                                                            type="text"
+                                                            className="input input-bordered input-sm w-full bg-inherit"
+                                                            value={chiefGuestDesignation}
+                                                            onChange={(e) => setChiefGuestDesignation(e.target.value)}
+                                                            aria-label='Cheif Guest designation'
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-700 text-sm font-semibold">Email:</p>
+                                                        <input
+                                                            type="email"
+                                                            className="input input-bordered input-sm w-full bg-inherit"
+                                                            value={chiefGuestEmail}
+                                                            onChange={(e) => setChiefGuestEmail(e.target.value)}
+                                                            aria-label='Email of cheif guest'
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-700 text-sm font-semibold">Phone:</p>
+                                                        <input
+                                                            type="tel"
+                                                            className="input input-bordered input-sm w-full bg-inherit"
+                                                            value={chiefGuestPhone}
+                                                            onChange={(e) => setChiefGuestPhone(e.target.value)}
+                                                            aria-label='cheif Guest Phone'
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-700 text-sm font-semibold">Address:</p>
+                                                        <input
+                                                            type="text"
+                                                            className="input input-bordered input-sm w-full bg-inherit"
+                                                            value={chiefGuestAddress}
+                                                            onChange={(e) => setChiefGuestAddress(e.target.value)}
+                                                            aria-label='Cheif Guest Address'
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2 mt-4">
+                                            <button
+                                                className="btn btn-primary btn-sm w-full"
+                                                onClick={async () => {
+                                                    try {
+                                                        const proposalRef = doc(db, 'eventProposals', selectedProposal.id);
+                                                        await updateDoc(proposalRef, {
+                                                            ...(chiefGuestSame ? {} : {
+                                                                chiefGuestName: chiefGuestName,
+                                                                chiefGuestDesignation: chiefGuestDesignation,
+                                                                chiefGuestEmail: chiefGuestEmail,
+                                                                chiefGuestPhone: chiefGuestPhone,
+                                                                chiefGuestAddress: chiefGuestAddress,
+                                                            }),
+                                                        });
+                                                        closePopup();
+                                                        if (currentUserEmail) {
+                                                            fetchUserProposals(currentUserEmail);
+                                                        }
+                                                    } catch (error) {
+                                                        console.error("Error updating proposal:", error);
+                                                    }
+                                                }}
+                                            >
+                                                Submit
+                                            </button>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -721,6 +680,11 @@ export default function MyDashboard() {
                     location: data.eventLocation,
                     convenerName: data.convenerName,
                     convenerEmail: data.convenerEmail,
+                    chiefGuestName: data.chiefGuestName, // Include chiefGuestName in fetched proposal
+                    chiefGuestDesignation: data.chiefGuestDesignation, // Include chiefGuestDesignation
+                    chiefGuestEmail: data.chiefGuestEmail, // Include chiefGuestEmail
+                    chiefGuestPhone: data.chiefGuestPhone, // Include chiefGuestPhone
+                    chiefGuestAddress: data.chiefGuestAddress, // Include chiefGuestAddress
                     ...data,
                 };
             }) as Proposal[];
