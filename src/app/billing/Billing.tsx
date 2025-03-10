@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, app } from '@/firebase/config';
-import { collection, getDocs, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';

@@ -160,11 +160,11 @@ interface Proposal {
     transport?: number;
     accommodation?: number;
     hall?: number;
-    chiefGuestName?: string; // Add chiefGuestName to Proposal Interface
-    chiefGuestDesignation?: string; // Add chiefGuestDesignation
-    chiefGuestEmail?: string; // Add chiefGuestEmail
-    chiefGuestPhone?: string; // Add chiefGuestPhone
-    chiefGuestAddress?: string; // Add chiefGuestAddress
+    chiefGuestName?: string;
+    chiefGuestDesignation?: string;
+    chiefGuestEmail?: string;
+    chiefGuestPhone?: string;
+    chiefGuestAddress?: string;
 }
 
 const LineChart = dynamic(() => Promise.resolve(Line), {
@@ -213,7 +213,6 @@ const MyDashboardContent: React.FC<{
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
     currentUserEmail: string | null | undefined;
-    setSelectedProposal: React.Dispatch<React.SetStateAction<Proposal | null>>;
     fetchUserProposals: (userEmail: string) => void;
 }> = ({
     userProposals,
@@ -222,9 +221,8 @@ const MyDashboardContent: React.FC<{
     handleProposalClick,
     closePopup,
     currentUserEmail,
-    setSelectedProposal,
-    fetchUserProposals
-}) => {
+    fetchUserProposals // removed setSelectedProposal from here
+}) => { // removed setSelectedProposal from destructured props
     const approvedProposalsCount = userProposals.filter(p => p.status === 'Approved').length;
     const pendingProposalsCount = userProposals.filter(p => p.status === 'Pending').length;
     const rejectedProposalsCount = userProposals.filter(p => p.status === 'Rejected').length;
@@ -722,8 +720,7 @@ export default function MyDashboard() {
             handleProposalClick={handleProposalClick}
             closePopup={closePopup}
             currentUserEmail={currentUserEmail}
-            setSelectedProposal={setSelectedProposal}
-            fetchUserProposals={fetchUserProposals}
+            fetchUserProposals={fetchUserProposals} // removed setSelectedProposal={setSelectedProposal} here
         />
     );
 }

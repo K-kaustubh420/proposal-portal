@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { db, app } from '@/firebase/config';
+import { db } from '@/firebase/config';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import {
     Star,
     Mail,
@@ -49,32 +48,20 @@ const ViewBills: React.FC = () => {
     const [bills, setBills] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedBill, setSelectedBill] = useState<Proposal | null>(null);
-    const [currentUserEmail, setCurrentUserEmail] = useState<string | null | undefined>(null); // Not used for filtering, but kept for potential other uses
 
 
-    useEffect(() => {
-        const authInstance = getAuth(app);
-        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-            if (user) {
-                setCurrentUserEmail(user.email); // Still get the email, but don't use it in fetching
-            } else {
-                setCurrentUserEmail(null);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
-
-
-    const fetchBills = useCallback(async () => {
+    const fetchBills = useCallback(() => {
         setLoading(true);
         try {
             const proposalsCollection = collection(db, 'eventProposals');
-            const q = query(proposalsCollection, where("status", "==", "Approved"));
-
+            // Fetch all "Approved" proposals (and "Done" if you still want them)
+            const q = query(proposalsCollection, where("proposalStatus", "in", ["Approved", "Done"]));
+    
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                console.log("Documents fetched (Approved or Done status):", querySnapshot.docs.length);
+    
                 const billsData = querySnapshot.docs.map(doc => {
                     const data = doc.data() as DocumentData;
-
                     return {
                         ...data,
                         id: doc.id,
@@ -82,10 +69,10 @@ const ViewBills: React.FC = () => {
                         organizer: data.organizingDepartment,
                         date: data.eventDate,
                         endDate: data.eventEndDate,
-                        status: data.proposalStatus || "Pending", // Default to Pending if not present
+                        status: data.proposalStatus || "Pending",
                         category: data.category,
                         cost: data.estimatedBudget,
-                        email: data.convenerEmail, // Keep the convenerEmail, even if not filtering
+                        email: data.convenerEmail,
                         description: data.eventDescription,
                         location: data.eventLocation,
                         convenerName: data.convenerName,
@@ -97,34 +84,55 @@ const ViewBills: React.FC = () => {
                         reviewLater: data.reviewLater || false,
                     } as Proposal;
                 });
-
-                // Filter based on actualBudget (NOT empty)
+    
+                // Filter bills:
                 const validBills = billsData.filter(bill => {
-                    return bill.actualBudget !== undefined && bill.actualBudget.length > 0;
+                    if (bill.actualBudget === undefined || bill.actualBudget.length === 0) {
+                        return false; // Exclude if no actualBudget
+                    }
+    
+                    if (bill.status === "Approved") {
+                        if (bill.endDate) {
+                            const endDate = new Date(bill.endDate);
+                            const currentDate = new Date();
+                            currentDate.setHours(0, 0, 0, 0); // Set current date to start of day for comparison
+                            endDate.setHours(0, 0, 0, 0);     // Set end date to start of day for comparison
+                            return endDate < currentDate; // Only include if endDate is before today
+                        } else {
+                            return false; // If status is "Approved" but no endDate, exclude (or handle as needed)
+                        }
+                    } else if (bill.status === "Done") {
+                        return true; // Include "Done" status bills regardless of end date (adjust if needed)
+                    }
+    
+                    return false; // Exclude other statuses (or handle them as needed)
                 });
-
+    
+                console.log("Valid bills after date and status filter:", validBills.length); // Log the filtered count
                 setBills(validBills);
                 setLoading(false);
             });
             return unsubscribe;
-
+    
         } catch (error) {
             console.error("Error fetching bills:", error);
             setLoading(false);
+            return () => {};
         }
     }, []);
 
-
     useEffect(() => {
-        let unsubscribe: () => void;
-        unsubscribe = fetchBills() as unknown as () => void;
+        const unsubscribe = fetchBills();
         return () => {
+            console.log("useEffect cleanup called. Unsubscribe:", unsubscribe);
             if (unsubscribe) {
+                console.log("Attempting to unsubscribe..."); // Added log
                 unsubscribe();
+            } else {
+                console.log("Unsubscribe is falsy (null or undefined)."); // Added log
             }
         };
     }, [fetchBills]);
-
 
 
     const toggleRead = useCallback(async (id: string) => {
@@ -315,6 +323,7 @@ const ViewBills: React.FC = () => {
                                                         type="button"
                                                         className="flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
                                                         onClick={(e) => { e.stopPropagation(); }}
+                                                        aria-label='button title'
                                                     >
                                                         <MoreVertical className="h-5 w-5" />
                                                     </button>
