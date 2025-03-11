@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { db } from '@/firebase/config';
 import { collection, getDocs, doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
+import Calendar from './Calendar'; // Import the Calendar component
+
 
 ChartJS.register(
     CategoryScale,
@@ -259,6 +261,8 @@ const DashboardContent: React.FC<{
     };
 
     const [showLineChart, setShowLineChart] = useState(false);
+    const [showTable, setShowTable] = useState(true); // State to control table/calendar display
+
 
     if (loading) {
         return <LoadingComponent />;
@@ -334,43 +338,66 @@ const DashboardContent: React.FC<{
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 w-auto lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-8">
-                                <div className="card shadow-md rounded-lg bg-white">
+                                <div className="card  shadow-md rounded-lg bg-white">
                                     <div className="card-body">
-                                        <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Approved Proposals Inbox</h2>
-                                        <div className="overflow-x-auto">
-                                            <table className="table table-compact w-full">
-                                                <thead>
-                                                    <tr>
-                                                        <th></th>
-                                                        <th>Status</th>
-                                                        <th>Title</th>
-                                                        <th>Organizing Department</th>
-                                                        <th>Convener</th>
-                                                        <th>Date</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {approvedProposals.map((proposal) => (
-                                                        <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
-                                                            <td>
-                                                                <input type="checkbox" className="checkbox"  aria-label='checkbox' />
-                                                            </td>
-                                                            <td>
-                                                                <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
-                                                                    {getBadgeText(proposal.tags)}
-                                                                </div>
-                                                            </td>
-                                                            <td>{proposal.title}</td>
-                                                            <td>{proposal.organizer}</td>
-                                                            <td>{proposal.convenerName}</td>
-                                                            <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="card-title text-lg font-bold text-gray-700">
+                                            {showTable ? "Approved Proposals Inbox" : "Calendar View"}
+                                        </h2>
+                                        <div className="form-control">
+                                            <label className="label cursor-pointer">
+                                                <span className="label-text">Show Calendar</span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle"
+                                                    checked={!showTable}
+                                                    onChange={() => setShowTable(!showTable)}
+                                                    aria-label='Show Calendar'
+                                                />
+                                            </label>
                                         </div>
+                                     </div>
+                                        {/* Content will go here based on showTable */}
+                                        {showTable ? (
+                                            <div className="overflow-x-auto">
+                                                <table className="table table-compact w-full">
+                                                    <thead>
+                                                        <tr>
+                                                            <th></th>
+                                                            <th>Status</th>
+                                                            <th>Title</th>
+                                                            <th>Organizing Department</th>
+                                                            <th>Convener</th>
+                                                            <th>Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {approvedProposals.map((proposal) => (
+                                                            <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
+                                                                <td>
+                                                                    <input type="checkbox" className="checkbox" aria-label='checkbox' />
+                                                                </td>
+                                                                <td>
+                                                                    <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
+                                                                        {getBadgeText(proposal.tags)}
+                                                                    </div>
+                                                                </td>
+                                                                <td>{proposal.title}</td>
+                                                                <td>{proposal.organizer}</td>
+                                                                <td>{proposal.convenerName}</td>
+                                                                <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                           <div className="overflow-x-auto w-full">
+                                                <Calendar/>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
