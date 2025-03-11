@@ -10,6 +10,8 @@ import {
     AlertCircle,
     XCircle,
     MoreVertical,
+    ArrowUp, // Import ArrowUp icon
+    ArrowDown, // Import ArrowDown icon
 } from 'lucide-react'; // Import icons
 import { motion } from 'framer-motion';
 import { DocumentData } from 'firebase/firestore';
@@ -56,10 +58,10 @@ const ViewBills: React.FC = () => {
             const proposalsCollection = collection(db, 'eventProposals');
             // Fetch all "Approved" proposals (and "Done" if you still want them)
             const q = query(proposalsCollection, where("proposalStatus", "in", ["Approved", "Done"]));
-    
+
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
                 console.log("Documents fetched (Approved or Done status):", querySnapshot.docs.length);
-    
+
                 const billsData = querySnapshot.docs.map(doc => {
                     const data = doc.data() as DocumentData;
                     return {
@@ -84,13 +86,13 @@ const ViewBills: React.FC = () => {
                         reviewLater: data.reviewLater || false,
                     } as Proposal;
                 });
-    
+
                 // Filter bills:
                 const validBills = billsData.filter(bill => {
                     if (bill.actualBudget === undefined || bill.actualBudget.length === 0) {
                         return false; // Exclude if no actualBudget
                     }
-    
+
                     if (bill.status === "Approved") {
                         if (bill.endDate) {
                             const endDate = new Date(bill.endDate);
@@ -104,32 +106,28 @@ const ViewBills: React.FC = () => {
                     } else if (bill.status === "Done") {
                         return true; // Include "Done" status bills regardless of end date (adjust if needed)
                     }
-    
+
                     return false; // Exclude other statuses (or handle them as needed)
                 });
-    
+
                 console.log("Valid bills after date and status filter:", validBills.length); // Log the filtered count
                 setBills(validBills);
                 setLoading(false);
             });
             return unsubscribe;
-    
+
         } catch (error) {
             console.error("Error fetching bills:", error);
             setLoading(false);
-            return () => {};
+            return () => { };
         }
     }, []);
 
     useEffect(() => {
         const unsubscribe = fetchBills();
         return () => {
-            console.log("useEffect cleanup called. Unsubscribe:", unsubscribe);
             if (unsubscribe) {
-                console.log("Attempting to unsubscribe..."); // Added log
                 unsubscribe();
-            } else {
-                console.log("Unsubscribe is falsy (null or undefined)."); // Added log
             }
         };
     }, [fetchBills]);
@@ -185,6 +183,18 @@ const ViewBills: React.FC = () => {
 
     const closePopup = useCallback(() => {
         setSelectedBill(null);
+    }, []);
+
+    // Helper function to calculate total proposed budget
+    const calculateTotalProposedBudget = useCallback((detailedBudget: { mainCategory: string; subCategory: string; totalAmount: number }[] | undefined) => {
+        if (!detailedBudget) return 0;
+        return detailedBudget.reduce((acc, item) => acc + (item.totalAmount || 0), 0);
+    }, []);
+
+    // Helper function to calculate total actual budget
+    const calculateTotalActualBudget = useCallback((actualBudget: { label: string; amount: number }[] | undefined) => {
+        if (!actualBudget) return 0;
+        return actualBudget.reduce((acc, item) => acc + item.amount, 0);
     }, []);
 
     if (loading) {
@@ -327,13 +337,7 @@ const ViewBills: React.FC = () => {
                                                     >
                                                         <MoreVertical className="h-5 w-5" />
                                                     </button>
-                                                    {/* Dropdown Menu (Add items as needed) */}
-                                                    {/* Example:
-                                                <div className="origin-top-right absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                                    <div className="py-1">
-                                                        <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Delete</a>
-                                                    </div>
-                                                </div> */}
+
                                                 </div>
                                             </div>
                                         </td>
@@ -404,24 +408,60 @@ const ViewBills: React.FC = () => {
                                     <tr>
                                         <th>Label</th>
                                         <th>Amount</th>
-
+                                        <th>Comparison</th>{/* Added Comparison column */}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {selectedBill.actualBudget && selectedBill.actualBudget.length > 0 ? (
-                                        selectedBill.actualBudget.map((item, index) => (
-                                            <tr key={index}>
-                                                <td>{item.label}</td>
-                                                <td>${item.amount.toLocaleString()}</td>
-                                            </tr>
-                                        ))
+                                        selectedBill.actualBudget.map((item, index) => {
+                                            // Find corresponding proposed amount (if it exists)
+                                            const proposedAmount = selectedBill.detailedBudget?.find(
+                                                (proposedItem) => proposedItem.mainCategory === item.label // Match by label (adjust as needed)
+                                            )?.totalAmount || 0;
+
+                                            return (
+                                                <tr key={index}>
+                                                    <td>{item.label}</td>
+                                                    <td>${item.amount.toLocaleString()}</td>
+                                                    <td>
+                                                        {item.amount > proposedAmount ? (
+                                                            <ArrowUp className="text-red-500 h-5 w-5" />  // Up arrow for higher
+                                                        ) : item.amount < proposedAmount ? (
+                                                            <ArrowDown className="text-green-500 h-5 w-5" /> // Down arrow for lower
+                                                        ) : (
+                                                            "" // No arrow if equal (or handle as you prefer)
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan={2} className="text-center italic">
+                                            <td colSpan={3} className="text-center italic">  {/* Changed colSpan to 3 */}
                                                 No actual budget details provided.
                                             </td>
                                         </tr>
                                     )}
+                                    {/* Total Row (Optional) */}
+                                    <tr>
+                                        <td className="font-bold">Total:</td>
+                                        <td className="font-bold">
+                                            ${calculateTotalActualBudget(selectedBill.actualBudget).toLocaleString()}
+                                        </td>
+                                        <td>
+                                            {(() => {
+                                                const totalProposed = calculateTotalProposedBudget(selectedBill.detailedBudget);
+                                                const totalActual = calculateTotalActualBudget(selectedBill.actualBudget);
+
+                                                if (totalActual > totalProposed) {
+                                                    return <ArrowUp className="text-red-500 h-5 w-5" />;
+                                                } else if (totalActual < totalProposed) {
+                                                    return <ArrowDown className="text-green-500 h-5 w-5" />;
+                                                }
+                                                return null; // Or some other indicator for equality
+                                            })()}
+                                        </td>
+                                    </tr>
 
                                 </tbody>
                             </table>

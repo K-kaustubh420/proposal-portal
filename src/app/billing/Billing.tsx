@@ -5,7 +5,7 @@ import { db, app } from '@/firebase/config';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { motion } from 'framer-motion';
-import { X, Loader2 } from 'lucide-react'; // Removed unused icons
+import { X, Loader2, ArrowUp, ArrowDown } from 'lucide-react'; // Added ArrowUp and ArrowDown
 
 interface Proposal {
   id: string;
@@ -158,11 +158,17 @@ const Bill: React.FC = () => {
       });
       closePopup();
       alert("Budget updated successfully!");
+
+      //Refetch the Proposal List
+      if (currentUserEmail) {
+        fetchUserProposals(currentUserEmail);
+      }
+
     } catch (error) {
       console.error("Error updating actual budget:", error);
       alert("Error updating budget. Please try again.");
     }
-  }, [selectedProposal, actualBudget, closePopup]);
+  }, [selectedProposal, actualBudget, closePopup, currentUserEmail, fetchUserProposals]);
 
   if (loading) {
     return <LoadingComponent />;
@@ -210,6 +216,20 @@ const Bill: React.FC = () => {
     return budgetCategories[mainCategory] || [];
   };
 
+    // Calculate total estimated and actual amounts
+    const totalEstimatedAmount = selectedProposal?.detailedBudget?.reduce((acc, item) => acc + item.totalAmount, 0) || 0;
+    const totalActualAmount = actualBudget.reduce((acc, item) => acc + item.amount, 0);
+
+    // Function to compare and display arrows
+    const compareBudget = (actual: number, estimated: number) => {
+      if (actual > estimated) {
+        return <ArrowUp className="text-red-500 h-5 w-5" />;
+      } else if (actual < estimated) {
+        return <ArrowDown className="text-green-500 h-5 w-5" />;
+      }
+      return null; // No arrow if equal
+    };
+
   return (
     <div className="bg-slate-100 min-h-screen p-4">
       <div className="max-w-7xl mx-auto">
@@ -232,7 +252,7 @@ const Bill: React.FC = () => {
                   <tr
                     key={proposal.id}
                     onClick={() => handleProposalClick(proposal)}
-                    className="hover:bg-blue-100 cursor-pointer transition-colors duration-200" // Changed hover color
+                    className="hover:bg-blue-100 cursor-pointer transition-colors duration-200"
                   >
                     <td>{proposal.title}</td>
                     <td>{proposal.organizer}</td>
@@ -273,7 +293,7 @@ const Bill: React.FC = () => {
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-primary">Budgeting Details - {selectedProposal.title}</h2>
-              <button onClick={closePopup} className="text-gray-600 hover:text-blue-800 focus:outline-none" aria-label="Close"> {/* Changed hover color */}
+              <button onClick={closePopup} className="text-gray-600 hover:text-blue-800 focus:outline-none" aria-label="Close">
                 <X className="h-7 w-7" />
               </button>
             </div>
@@ -294,7 +314,7 @@ const Bill: React.FC = () => {
                     selectedProposal.detailedBudget.map((item, index) => (
                       <tr
                         key={index}
-                        className="hover:bg-blue-200" // Changed hover color
+                        className="hover:bg-blue-200"
                       >
                         <td>{item.mainCategory}</td>
                         <td>{item.subCategory}</td>
@@ -313,6 +333,12 @@ const Bill: React.FC = () => {
                     </tr>
                   )}
                 </tbody>
+                 <tfoot>
+                    <tr className="bg-gray-100">
+                        <td colSpan={3} className="text-right font-bold">Total Estimated:</td>
+                        <td>${totalEstimatedAmount.toLocaleString()}</td>
+                    </tr>
+                </tfoot>
               </table>
             </div>
 
@@ -332,7 +358,7 @@ const Bill: React.FC = () => {
                   {actualBudget.map((item, index) => (
                     <tr
                       key={index}
-                      className="hover:bg-blue-200" // Changed hover color
+                      className="hover:bg-blue-200"
                     >
                       <td>{item.label.split(' - ')[0]}</td>
                       <td>{item.label.split(' - ')[1] || 'N/A'}</td>
@@ -461,6 +487,16 @@ const Bill: React.FC = () => {
                     </td>
                   </tr>
                 </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100">
+                    <td colSpan={3} className="text-right font-bold">Total Actual:</td>
+                    <td className='flex items-center gap-2'>
+                      ${totalActualAmount.toLocaleString()}
+                      {compareBudget(totalActualAmount, totalEstimatedAmount)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
             <div className="mt-6 flex justify-end">

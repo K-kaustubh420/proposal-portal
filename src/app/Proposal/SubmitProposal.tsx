@@ -20,6 +20,25 @@ interface DetailedBudgetRow {
     locationType?: string;
 }
 
+interface SponsorshipRow {
+    id: number;
+    category: string;
+    amount: string;
+    rewardGiven: string;
+    mode: string;
+    outputSponsorWant: string;
+    aboutSponsor: string; // Added aboutSponsor field
+}
+
+interface ChiefGuestRow {
+    id: number;
+    name: string;
+    designation: string;
+    address: string;
+    phone: string;
+}
+
+
 const participantCategories = [
     "FA's",
     "Faculties Only",
@@ -62,13 +81,8 @@ export default function EventProposalForm() {
     const [category, setCategory] = useState('');
     const [designation, setDesignation] = useState('');
     const [estimatedBudget, setEstimatedBudget] = useState('');
-    const [sponsorshipDetails, setSponsorshipDetails] = useState('');
     const [pastEvents, setPastEvents] = useState('');
     const [relevantDetails, setRelevantDetails] = useState('');
-    const [chiefGuestName, setChiefGuestName] = useState('');
-    const [chiefGuestDesignation, setChiefGuestDesignation] = useState('');
-    const [chiefGuestAddress, setChiefGuestAddress] = useState('');
-    const [chiefGuestPhone, setChiefGuestPhone] = useState('');
     const [convenerName, setConvenerName] = useState('');
     const [convenerEmail, setConvenerEmail] = useState('');
     const [fundUniversity, setFundUniversity] = useState('');
@@ -76,6 +90,7 @@ export default function EventProposalForm() {
     const [fundSponsorship, setFundSponsorship] = useState('');
     const [proposalId, setProposalId] = useState<string | null>(null);
     const [fundOther, setFundOther] = useState('');
+    const [expectedParticipants, setExpectedParticipants] = useState('');
 
     const [selectedParticipantCategories, setSelectedParticipantCategories] = useState<string[]>([]);
     const [selectedStudentCategories, setSelectedStudentCategories] = useState<string[]>([]); // For student sub-categories
@@ -88,9 +103,19 @@ export default function EventProposalForm() {
 
     const totalDetailedBudget: number = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
-    const [sponsorshipRows, setSponsorshipRows] = useState([
-        { id: 1, sponsorshipType: '', associatingAgencies: '' }
+    const [sponsorshipRows, setSponsorshipRows] = useState<SponsorshipRow[]>([
+        { id: 1, category: '', amount: '', rewardGiven: '', mode: '', outputSponsorWant: '', aboutSponsor: '' } // Initialize aboutSponsor
     ]);
+
+    // Chief Guest Table State
+    const [chiefGuestRows, setChiefGuestRows] = useState<ChiefGuestRow[]>([
+      { id: 1, name: '', designation: '', address: '', phone: '' },
+    ]);
+
+
+    // Calculate total sponsorship amount
+    const totalSponsorshipAmount: number = sponsorshipRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+
 
     const calculateDuration = () => {
         if (!startDate || !endDate) return;
@@ -133,7 +158,7 @@ export default function EventProposalForm() {
     };
 
     const addSponsorshipRow = () => {
-        setSponsorshipRows([...sponsorshipRows, { id: sponsorshipRows.length + 1, sponsorshipType: '', associatingAgencies: '' }]);
+        setSponsorshipRows([...sponsorshipRows, { id: sponsorshipRows.length + 1, category: '', amount: '', rewardGiven: '', mode: '', outputSponsorWant: '', aboutSponsor: '' }]);
     };
 
     const deleteSponsorshipRow = (idToDelete: number) => {
@@ -146,6 +171,24 @@ export default function EventProposalForm() {
         );
         setSponsorshipRows(updatedRows);
     };
+
+
+    // Chief Guest Functions
+    const addChiefGuestRow = () => {
+      setChiefGuestRows([...chiefGuestRows, { id: chiefGuestRows.length + 1, name: '', designation: '', address: '', phone: '' }]);
+    };
+
+    const deleteChiefGuestRow = (idToDelete: number) => {
+      setChiefGuestRows(chiefGuestRows.filter(row => row.id !== idToDelete));
+    };
+
+    const handleChiefGuestChange = (id: number, field: string, value: string) => {
+        const updatedRows = chiefGuestRows.map(row =>
+          row.id === id ? { ...row, [field]: value } : row
+        );
+      setChiefGuestRows(updatedRows);
+    };
+
 
     const toggleParticipantCategory = (category: string) => {
         if (selectedParticipantCategories.includes(category)) {
@@ -197,27 +240,24 @@ export default function EventProposalForm() {
                 category,
                 designation,
                 estimatedBudget,
-                sponsorshipDetails,
                 pastEvents,
                 relevantDetails,
-                chiefGuestName,
-                chiefGuestDesignation,
-                chiefGuestAddress,
-                chiefGuestPhone,
                 convenerName,
                 convenerEmail,
                 fundingDetails: {
                     universityFund: fundUniversity,
                     registrationFund: fundRegistration,
-                    sponsorshipFund: fundSponsorship,
+                    sponsorshipFund: totalSponsorshipAmount.toString(), // Use calculated total here
                     otherSourcesFund: fundOther,
                 },
                 detailedBudget: detailedBudgetRows,
-                sponsorshipDetailsRows: sponsorshipRows,
+                sponsorshipDetailsRows: sponsorshipRows,  // Keep this
+                chiefGuestDetails: chiefGuestRows,
                 submissionTimestamp: new Date().toISOString(),
                 proposalStatus: 'Pending',
                 participantCategories: selectedParticipantCategories,
                 studentCategories: selectedStudentCategories,  // Include student categories
+                expectedParticipants,
             };
 
             const eventProposalsCollection = collection(db, 'eventProposals');
@@ -242,13 +282,8 @@ export default function EventProposalForm() {
             setCategory('');
             setDesignation('');
             setEstimatedBudget('');
-            setSponsorshipDetails('');
             setPastEvents('');
             setRelevantDetails('');
-            setChiefGuestName('');
-            setChiefGuestDesignation('');
-            setChiefGuestAddress('');
-            setChiefGuestPhone('');
             setConvenerName('');
             setConvenerEmail('');
             setFundUniversity('');
@@ -258,13 +293,15 @@ export default function EventProposalForm() {
             setProposalId(null);
             setSelectedParticipantCategories([]);
             setSelectedStudentCategories([]);
+            setExpectedParticipants('');
 
             setDetailedBudgetRows([
                 { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
                 { id: 2, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
                 { id: 3, description: '', quantity: '', costPerUnit: '', totalAmount: '' }
             ]);
-            setSponsorshipRows([{ id: 1, sponsorshipType: '', associatingAgencies: '' }]);
+            setSponsorshipRows([{ id: 1, category: '', amount: '', rewardGiven: '', mode: '', outputSponsorWant: '', aboutSponsor: '' }]);
+            setChiefGuestRows([{ id: 1, name: '', designation: '', address: '', phone: '' }]);
 
         } catch (error) {
             console.error('Error submitting proposal:', error);
@@ -302,6 +339,11 @@ export default function EventProposalForm() {
         }
     }, [user]);
 
+      useEffect(() => {
+        // Update fundSponsorship whenever totalSponsorshipAmount changes
+        setFundSponsorship(totalSponsorshipAmount.toString());
+    }, [totalSponsorshipAmount]);
+
     useEffect(() => {
         const editMode = searchParams.get('edit');
         if (editMode === 'true') {
@@ -333,6 +375,8 @@ export default function EventProposalForm() {
                 chiefGuestPhone: searchParams.get('chiefGuestPhone'),
                 participantCategories: searchParams.getAll('participantCategories'), // Retrieve as array
                 studentCategories: searchParams.getAll('studentCategories'),    // Retrieve as array
+                expectedParticipants: searchParams.get('expectedParticipants'),
+
             };
 
             setProposalId(proposalData.id as string || null);
@@ -343,12 +387,9 @@ export default function EventProposalForm() {
             setEstimatedBudget(proposalData.estimatedBudget as string || '');
             setConvenerName(proposalData.convenerName || '');
             setConvenerEmail(proposalData.convenerEmail || '');
-            setChiefGuestName(proposalData.chiefGuestName || '');
-            setChiefGuestDesignation(proposalData.chiefGuestDesignation || '');
-            setChiefGuestAddress(proposalData.chiefGuestAddress || '');
-            setChiefGuestPhone(proposalData.chiefGuestPhone || '');
             setSelectedParticipantCategories(proposalData.participantCategories || []);
             setSelectedStudentCategories(proposalData.studentCategories || []);
+            setExpectedParticipants(proposalData.expectedParticipants || '');
 
 
             if (proposalData.date) {
@@ -553,23 +594,7 @@ export default function EventProposalForm() {
                                         <option value="Dean">Dean</option>
                                     </select>
                                 </div>
-
-
-                                <div>
-                                    <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="sponsorship-details">
-                                        Sponsorship Details
-                                    </label>
-                                    <textarea
-                                        id="sponsorship-details"
-                                        name="sponsorship-details"
-                                        placeholder="Details about potential sponsors or collaborations"
-                                        rows={3}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                        value={sponsorshipDetails}
-                                        onChange={(e) => setSponsorshipDetails(e.target.value)}
-                                    ></textarea>
-                                </div>
-
+                                
                                 <div>
                                     <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="past-events">
                                         Past Events (2021-2024)
@@ -599,67 +624,57 @@ export default function EventProposalForm() {
                                         onChange={(e) => setRelevantDetails(e.target.value)}
                                     ></textarea>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-name">
-                                        Chief Guest / Celebrity Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="chief-guest-name"
-                                        name="chief-guest-name"
-                                        placeholder="Enter Name"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                        value={chiefGuestName}
-                                        onChange={(e) => setChiefGuestName(e.target.value)}
-                                        required
-                                    />
-                                </div>
 
                                 <div>
-                                    <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-designation">
-                                        Chief Guest / Celebrity Designation
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="chief-guest-designation"
-                                        name="chief-guest-designation"
-                                        placeholder="Enter Designation"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                        value={chiefGuestDesignation}
-                                        onChange={(e) => setChiefGuestDesignation(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-phone">
-                                        Chief Guest / Celebrity Phone no
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="chief-guest-phone"
-                                        name="chief-guest-phone"
-                                        placeholder="Enter phone no"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                        value={chiefGuestPhone}
-                                        onChange={(e) => setChiefGuestPhone(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="chief-guest-address">
-                                        Chief Guest / Celebrity Address
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="chief-guest-address"
-                                        name="chief-guest-address"
-                                        placeholder="Enter address"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                        value={chiefGuestAddress}
-                                        onChange={(e) => setChiefGuestAddress(e.target.value)}
-                                        required
-                                    />
+                                  <h3 className="text-xl font-bold text-gray-800 mb-4">Chief Guest Details</h3>
+                                    <div className="overflow-x-auto">
+                                      <table className="table-auto w-full shadow-md rounded-md">
+                                        <thead className="bg-blue-50">
+                                          <tr className="text-left">
+                                            <th className="px-4 py-2">S.No</th>
+                                            <th className="px-4 py-2">Name</th>
+                                            <th className="px-4 py-2">Designation</th>
+                                            <th className="px-4 py-2">Address</th>
+                                            <th className="px-4 py-2">Phone</th>
+                                            <th className="px-4 py-2">Delete</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {chiefGuestRows.map((row, index) => (
+                                            <tr key={row.id} className="border-b border-gray-200">
+                                              <td className="px-4 py-1">{index + 1}</td>
+                                              <td className="px-4 py-2">
+                                                <label htmlFor={`chief-guest-name-${row.id}`} className="sr-only">Name for row {row.id}</label>
+                                                <input type="text" id={`chief-guest-name-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.name} onChange={(e) => handleChiefGuestChange(row.id, 'name', e.target.value)} />
+                                              </td>
+                                              <td className="px-4 py-2">
+                                              <label htmlFor={`chief-guest-designation-${row.id}`} className="sr-only">Designation for row {row.id}</label>
+                                                <input type="text" id={`chief-guest-designation-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.designation} onChange={(e) => handleChiefGuestChange(row.id, 'designation', e.target.value)} />
+                                              </td>
+                                              <td className="px-4 py-2">
+                                              <label htmlFor={`chief-guest-address-${row.id}`} className="sr-only">Address for row {row.id}</label>
+                                                <input type="text" id={`chief-guest-address-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.address} onChange={(e) => handleChiefGuestChange(row.id, 'address', e.target.value)} />
+                                              </td>
+                                              <td className="px-4 py-2">
+                                              <label htmlFor={`chief-guest-phone-${row.id}`} className="sr-only">Phone for row {row.id}</label>
+                                                <input type="text" id={`chief-guest-phone-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.phone} onChange={(e) => handleChiefGuestChange(row.id, 'phone', e.target.value)} />
+                                              </td>
+                                              <td className="px-4 py-2">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => deleteChiefGuestRow(row.id)}
+                                                  className="btn btn-sm btn-circle btn-error text-white"
+                                                  aria-label={`Delete chief guest row ${row.id}`}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <button type="button" onClick={addChiefGuestRow} className="btn btn-outline mt-4 rounded-full">+ Add Row</button>
                                 </div>
 
                                 <div>
@@ -696,6 +711,25 @@ export default function EventProposalForm() {
                                     />
                                 </div>
 
+                                  <div>
+                                    <label
+                                        className="block text-gray-700 bg-white text-sm font-bold mb-2"
+                                        htmlFor="expected-participants"
+                                    >
+                                        Total No of Expected Participants
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="expected-participants"
+                                        name="expected-participants"
+                                        placeholder="Enter Total Number"
+                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                                        value={expectedParticipants}
+                                        onChange={(e) => setExpectedParticipants(e.target.value)}
+                                        required
+                                    />
+                                </div>
+
 
                                 <div className="mb-4">
                                     <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -728,8 +762,7 @@ export default function EventProposalForm() {
                                                   onClick={() => toggleStudentCategory(category)}
                                               >
                                                   {category}
-                                              </span>
-                                            ))}
+                                              </span>                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -780,9 +813,14 @@ export default function EventProposalForm() {
                                             <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="fund-sponsorship">
                                                 Sponsorship Fund
                                             </label>
-                                            <input type="number" id="fund-sponsorship" name="fund-sponsorship" placeholder="0" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
-                                                value={fundSponsorship}
-                                                onChange={(e) => setFundSponsorship(e.target.value)}
+                                            <input
+                                                type="number"
+                                                id="fund-sponsorship"
+                                                name="fund-sponsorship"
+                                                placeholder="0"
+                                                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-200 leading-tight focus:outline-none focus:shadow-outline"
+                                                value={totalSponsorshipAmount}
+                                                readOnly // Make it read-only
                                             />
                                         </div>
                                         <div>
@@ -968,42 +1006,85 @@ export default function EventProposalForm() {
                                     <button type="button" onClick={addDetailedBudgetRow} className="btn btn-outline mt-4 rounded-full">+ Add Row</button></div>
 
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-bold text-gray-800 mb-4">Sponsorship Details</h3>
-                                    <div className="overflow-x-auto">
-                                        <table className="table-auto w-full shadow-md rounded-md">
-                                            <thead className="bg-blue-50">
-                                                <tr className="text-left">
-                                                    <th className="px-4 py-2">Sponsorship Type</th>
-                                                    <th className="px-4 py-2">Associating Agencies</th>
-                                                    <th className="px-4 py-2">Delete</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {sponsorshipRows.map((row) => (
-                                                    <tr key={row.id} className="border-b border-gray-200">
-                                                        <td className="border-b border-gray-200 px-4 py-2">
-                                                            <label htmlFor={`sponsorship-type-${row.id}`} className="sr-only">Sponsorship Type for row {row.id}</label>
-                                                            <input type="text" id={`sponsorship-type-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.sponsorshipType} onChange={(e) => handleSponsorshipChange(row.id, 'sponsorshipType', e.target.value)} /></td>
-                                                        <td className="border-b border-gray-200 px-4 py-2">
-                                                            <label htmlFor={`associating-agencies-${row.id}`} className="sr-only">Associating Agencies for row {row.id}</label>
-                                                            <input type="text" id={`associating-agencies-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.associatingAgencies} onChange={(e) => handleSponsorshipChange(row.id, 'associatingAgencies', e.target.value)} /></td>
-                                                        <td className="px-4 py-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => deleteSponsorshipRow(row.id)}
-                                                                className="btn btn-sm btn-circle btn-error text-white"
-                                                                aria-label={`Delete sponsorship row ${row.id}`}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <button type="button" onClick={addSponsorshipRow} className="btn btn-outline mt-4 rounded-full">+ Add Row</button>
-                                </div>
+                                      <h3 className="text-xl font-bold text-gray-800 mb-4">Sponsorship Details</h3>
+                                      <div className="overflow-x-auto">
+                                          <table className="table-auto w-full shadow-md rounded-md">
+                                              <thead className="bg-blue-50">
+                                                  <tr className="text-left">
+                                                      <th className="px-4 py-2">S.No</th>
+                                                      <th className="px-4 py-2">Category</th>
+                                                      <th className="px-4 py-2">Amount (₹)</th>
+                                                      <th className="px-4 py-2">Reward Given</th>
+                                                      <th className="px-4 py-2">Mode</th>
+                                                      <th className="px-4 py-2">Output Sponsor Wants</th>
+                                                      <th className="px-4 py-2">Delete</th>
+                                                  </tr>
+                                              </thead>
+                                              <tbody>
+                                                  {sponsorshipRows.map((row, index) => (
+                                                      <React.Fragment key={row.id}>
+                                                          <tr className="border-b border-gray-200">
+                                                              <td className="px-4 py-1">{index + 1}</td>
+                                                              <td className="px-4 py-2">
+                                                                  <label htmlFor={`sponsorship-category-${row.id}`} className="sr-only">Category for row {row.id}</label>
+                                                                  <input type="text" id={`sponsorship-category-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.category} onChange={(e) => handleSponsorshipChange(row.id, 'category', e.target.value)} />
+                                                              </td>
+                                                              <td className="px-4 py-2">
+                                                                  <label htmlFor={`sponsorship-amount-${row.id}`} className="sr-only">Amount for row {row.id}</label>
+                                                                  <input type="number" id={`sponsorship-amount-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.amount} onChange={(e) => handleSponsorshipChange(row.id, 'amount', e.target.value)} />
+                                                              </td>
+                                                              <td className="px-4 py-2">
+                                                                  <label htmlFor={`reward-given-${row.id}`} className="sr-only">Reward Given for row {row.id}</label>
+                                                                  <input type="text" id={`reward-given-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.rewardGiven} onChange={(e) => handleSponsorshipChange(row.id, 'rewardGiven', e.target.value)} />
+                                                              </td>
+                                                              <td className="px-4 py-2">
+                                                                  <label htmlFor={`mode-${row.id}`} className="sr-only">Mode for row {row.id}</label>
+                                                                  <input type="text" id={`mode-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.mode} onChange={(e) => handleSponsorshipChange(row.id, 'mode', e.target.value)} />
+                                                              </td>
+                                                              <td className="px-4 py-2">
+                                                                  <label htmlFor={`output-sponsor-want-${row.id}`} className="sr-only">Output Sponsor Wants for row {row.id}</label>
+                                                                  <input type="text" id={`output-sponsor-want-${row.id}`} className="shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" value={row.outputSponsorWant} onChange={(e) => handleSponsorshipChange(row.id, 'outputSponsorWant', e.target.value)} />
+                                                              </td>
+                                                              <td className="px-4 py-2">
+                                                                  <button
+                                                                      type="button"
+                                                                      onClick={() => deleteSponsorshipRow(row.id)}
+                                                                      className="btn btn-sm btn-circle btn-error text-white"
+                                                                      aria-label={`Delete sponsorship row ${row.id}`}
+                                                                  >
+                                                                      <Trash2 className="h-4 w-4" />
+                                                                  </button>
+                                                              </td>
+                                                          </tr>
+                                                          {/* About Sponsor Row */}
+                                                          <tr className="border-b border-gray-200">
+                                                              <td colSpan={7} className="px-4 py-2">
+                                                                  <label htmlFor={`about-sponsor-${row.id}`} className="block text-gray-700 text-sm font-bold mb-2">About Sponsor:</label>
+                                                                  <textarea
+                                                                      id={`about-sponsor-${row.id}`}
+                                                                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                                                                      value={row.aboutSponsor}
+                                                                      onChange={(e) => {
+                                                                          const words = e.target.value.split(/\s+/).filter(word => word !== "").length;
+                                                                          if (words <= 200) {
+                                                                              handleSponsorshipChange(row.id, 'aboutSponsor', e.target.value);
+                                                                            }
+                                                                        }}
+                                                                      rows={3}  // Adjust as needed
+                                                                      placeholder="Enter details about the sponsor (max 200 words)"
+                                                                    />
+                                                                    <p className="text-sm text-gray-500 mt-1">
+                                                                    {row.aboutSponsor.split(/\s+/).filter(word => word !== "").length} / 200 words
+                                                                    </p>
+                                                              </td>
+                                                          </tr>
+                                                      </React.Fragment>
+                                                  ))}
+                                              </tbody>
+                                          </table>
+                                      </div>
+                                      <button type="button" onClick={addSponsorshipRow} className="btn btn-outline mt-4 rounded-full">+ Add Row</button>
+                                  </div>
 
                                 <div className="mt-10">
                                     <button type="submit" className="btn btn-primary w-full rounded-full text-lg font-semibold py-3 hover:shadow-xl transition-shadow duration-300">
