@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -9,13 +8,13 @@ import { db } from '@/firebase/config';
 import { collection, getDocs, DocumentData } from 'firebase/firestore';
 import { X } from 'lucide-react';
 import listPlugin from '@fullcalendar/list';
-import { EventInput } from '@fullcalendar/core';
+import { EventInput, EventClickArg } from '@fullcalendar/core'; // Import EventClickArg
 
 
 interface FirestoreProposal extends DocumentData {
     eventTitle: string;
     organizingDepartment: string;
-    eventDate: string;
+    eventDate: string; //  Consider using a consistent date format (e.g., "YYYY-MM-DD")
     proposalStatus?: string;
     category: string;
     estimatedBudget: number;
@@ -33,7 +32,7 @@ interface Proposal {
     id: string;
     title: string;
     organizer: string;
-    date: string;
+    date: string; //  Consider using a consistent date format
     status: string;
     category: string;
     cost: number;
@@ -132,7 +131,7 @@ const Calendar: React.FC = () => {
         });
     }, [eventProposals]);
 
-    const handleEventClick = (clickInfo: any) => {
+    const handleEventClick = (clickInfo: EventClickArg) => {
         setSelectedEvent(clickInfo.event.extendedProps as Proposal);
     };
 
@@ -165,31 +164,31 @@ const Calendar: React.FC = () => {
     return (
         <div className="h-full w-full font-sans text-gray-900">
             <div className="">
-                    <FullCalendar
-                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-                        initialView="dayGridMonth"
-                        headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-                        }}
-                        events={calendarEvents}
-                        eventClick={handleEventClick}
-                        eventClassNames="cursor-pointer"
-                        height="80vh"
-                        themeSystem="standard"
-                        titleFormat={{
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            weekday: 'long'
-                        }}
-                    />
-                
+                <FullCalendar
+                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+                    initialView="dayGridMonth"
+                    headerToolbar={{
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                    }}
+                    events={calendarEvents}
+                    eventClick={handleEventClick}
+                    eventClassNames="cursor-pointer"
+                    height="80vh"
+                    themeSystem="standard"
+                    titleFormat={{
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'long'
+                    }}
+                />
+
             </div>
 
-             {/* Modal/Popup */}
-             {selectedEvent && (
+            {/* Modal/Popup */}
+            {selectedEvent && (
                 <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
                         <div className="flex justify-between items-start">
@@ -204,7 +203,7 @@ const Calendar: React.FC = () => {
                             <p><span className="font-medium text-gray-700">Convener Email:</span> {selectedEvent.convenerEmail}</p>
                             <p><span className="font-medium text-gray-700">Date:</span> {new Date(selectedEvent.date).toLocaleDateString("en-GB")}</p>
                             <div>
-                            <span className="font-medium text-gray-700">Status:</span> <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getBadgeClass(selectedEvent.tags)}`}>{getBadgeText(selectedEvent.tags)}</span>
+                                <span className="font-medium text-gray-700">Status:</span> <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getBadgeClass(selectedEvent.tags)}`}>{getBadgeText(selectedEvent.tags)}</span>
                             </div>
                             <p><span className="font-medium text-gray-700">Category:</span> {selectedEvent.category}</p>
                             <p><span className="font-medium text-gray-700">Estimated Cost:</span> ₹{selectedEvent.cost.toLocaleString()}</p>
@@ -214,7 +213,7 @@ const Calendar: React.FC = () => {
                                     <p><span className="font-medium text-gray-700">Chief Guest Designation:</span> {selectedEvent.chiefGuestDesignation}</p>
                                 </>
                             )}
-                             <p className="text-gray-700 mt-4"><span className="font-semibold">Description:</span></p>
+                            <p className="text-gray-700 mt-4"><span className="font-semibold">Description:</span></p>
                             <p className="text-gray-700">{selectedEvent.description}</p>
                         </div>
                     </div>

@@ -87,7 +87,7 @@ export default function EventProposalForm() {
     const [convenerEmail, setConvenerEmail] = useState('');
     const [fundUniversity, setFundUniversity] = useState('');
     const [fundRegistration, setFundRegistration] = useState('');
-    const [fundSponsorship, setFundSponsorship] = useState('');
+    const [ /*fundSponsorship */, setFundSponsorship] = useState('');
     const [proposalId, setProposalId] = useState<string | null>(null);
     const [fundOther, setFundOther] = useState('');
     const [expectedParticipants, setExpectedParticipants] = useState('');
