@@ -23,10 +23,12 @@ import {
     XCircle,
     CheckCircle,
     Info,
-    X,
 } from 'lucide-react';
 import { db } from '@/firebase/config';
 import { collection, getDocs, doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
+import Calendar from './Calendar'; // Import the Calendar component
+import PopupCard from './PopupCard'; // Import PopupCard
+
 
 ChartJS.register(
     CategoryScale,
@@ -40,7 +42,6 @@ ChartJS.register(
     Filler
 );
 
-// --- Chart Options  ---
 const lineOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -66,8 +67,8 @@ const lineOptions: ChartOptions<'line'> = {
         y: {
             type: 'linear',
             beginAtZero: true,
-            grid: { // No type assertion needed here!
-                color: (context: ScriptableScaleContext) => { // Explicitly type context
+            grid: {
+                color: (context: ScriptableScaleContext) => {
                     if (context.tick.value === undefined) {
                         return 'rgba(0,0,0,0)';
                     }
@@ -77,7 +78,7 @@ const lineOptions: ChartOptions<'line'> = {
                         return 'rgba(0, 0, 0, 0)';
                     }
                 },
-                lineWidth: (context: ScriptableScaleContext) => {  // Explicitly type context
+                lineWidth: (context: ScriptableScaleContext) => {
                     if (context.tick.value === undefined) {
                         return 0;
                     }
@@ -86,7 +87,7 @@ const lineOptions: ChartOptions<'line'> = {
                     }
                     return 0;
                 }
-            } satisfies Partial<GridLineOptions>, // Use satisfies
+            } satisfies Partial<GridLineOptions>,
             ticks: { color: '#4b5563', font: { size: 12 } }
         },
         x: {
@@ -136,8 +137,6 @@ const pieDataOptions: ChartOptions<'pie'> = {
     },
 };
 
-// --- Interfaces and Types ---
-
 interface FirestoreProposal extends DocumentData {
     eventTitle: string;
     organizingDepartment: string;
@@ -174,7 +173,6 @@ interface Proposal {
     tags?: string[];
 }
 
-// --- Dynamic Imports ---
 const LineChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), {
     ssr: false,
     loading: () => <p>Loading chart...</p>
@@ -184,8 +182,6 @@ const PieChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie),
     ssr: false,
     loading: () => <p>Loading chart...</p>
 });
-
-// --- Helper Components  ---
 
 const LoadingComponent = () => (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
@@ -220,7 +216,6 @@ function YearlyDropdown() {
     );
 }
 
-// --- Dashboard Content ---
 const DashboardContent: React.FC<{
     eventProposals: Proposal[];
     loading: boolean;
@@ -229,7 +224,7 @@ const DashboardContent: React.FC<{
     statusUpdateMessage: string | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
-    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string) => Promise<void>;
+    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string, feedback?: string) => Promise<void>;
 }> = ({
     eventProposals,
     loading,
@@ -259,6 +254,8 @@ const DashboardContent: React.FC<{
     };
 
     const [showLineChart, setShowLineChart] = useState(false);
+    const [showTable, setShowTable] = useState(true); // State to control table/calendar display
+
 
     if (loading) {
         return <LoadingComponent />;
@@ -334,43 +331,64 @@ const DashboardContent: React.FC<{
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 w-auto lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-8">
-                                <div className="card shadow-md rounded-lg bg-white">
+                                <div className="card  shadow-md rounded-lg bg-white">
                                     <div className="card-body">
-                                        <h2 className="card-title text-lg font-bold text-gray-700 mb-4">Approved Proposals Inbox</h2>
-                                        <div className="overflow-x-auto">
-                                            <table className="table table-compact w-full">
-                                                <thead>
-                                                    <tr>
-                                                        <th></th>
-                                                        <th>Status</th>
-                                                        <th>Title</th>
-                                                        <th>Organizing Department</th>
-                                                        <th>Convener</th>
-                                                        <th>Date</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {approvedProposals.map((proposal) => (
-                                                        <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
-                                                            <td>
-                                                                <input type="checkbox" className="checkbox"  aria-label='checkbox' />
-                                                            </td>
-                                                            <td>
-                                                                <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
-                                                                    {getBadgeText(proposal.tags)}
-                                                                </div>
-                                                            </td>
-                                                            <td>{proposal.title}</td>
-                                                            <td>{proposal.organizer}</td>
-                                                            <td>{proposal.convenerName}</td>
-                                                            <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="card-title text-lg font-bold text-gray-700">
+                                            {showTable ? "Approved Proposals Inbox" : "Calendar View"}
+                                        </h2>
+                                        <div className="form-control">
+                                            <label className="label cursor-pointer">
+                                                <span className="label-text">Show Calendar</span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle"
+                                                    checked={!showTable}                                                    onChange={() => setShowTable(!showTable)}
+                                                    aria-label='Show Calendar'
+                                                />
+                                            </label>
                                         </div>
+                                     </div>
+                                        {showTable ? (
+                                            <div className="overflow-x-auto">
+                                                <table className="table table-compact w-full">
+                                                    <thead>
+                                                        <tr>
+                                                            <th></th>
+                                                            <th>Status</th>
+                                                            <th>Title</th>
+                                                            <th>Organizing Department</th>
+                                                            <th>Convener</th>
+                                                            <th>Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {approvedProposals.map((proposal) => (
+                                                            <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
+                                                                <td>
+                                                                    <input type="checkbox" className="checkbox" aria-label='checkbox' />
+                                                                </td>
+                                                                <td>
+                                                                    <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
+                                                                        {getBadgeText(proposal.tags)}
+                                                                    </div>
+                                                                </td>
+                                                                <td>{proposal.title}</td>
+                                                                <td>{proposal.organizer}</td>
+                                                                <td>{proposal.convenerName}</td>
+                                                                <td>{new Date(proposal.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                           <div className="overflow-x-auto w-full">
+                                                <Calendar/>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -411,87 +429,20 @@ const DashboardContent: React.FC<{
             </div>
 
             {selectedProposal && (
-                <>
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl">
-                            <div className="flex justify-between items-start">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4">{selectedProposal.title}</h2>
-                                <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label='closepopup'>
-                                    <X size={24} />
-                                </button>
-                            </div>
-
-                            <div className="mb-4">
-                                <p className="text-gray-700"><span className="font-semibold">Organizing Department:</span> {selectedProposal.organizer}</p>
-                                <p className="text-gray-700"><span className="font-semibold">Convener:</span> {selectedProposal.convenerName}</p>
-                                <p className="text-gray-700"><span className="font-semibold">Convener Email:</span> {selectedProposal.convenerEmail}</p>
-                                <p className="text-gray-700"><span className="font-semibold">Date:</span> {new Date(selectedProposal.date).toLocaleDateString("en-GB")}</p>
-                                <p className="text-gray-700">
-                                    <span className="font-semibold">Status:</span>
-                                    <span className={`badge badge-sm ${getBadgeClass(selectedProposal.tags)}`}>
-                                        {getBadgeText(selectedProposal.tags)}
-                                    </span>
-                                </p>
-                                <p className="text-gray-700"><span className="font-semibold">Category:</span> {selectedProposal.category}</p>
-                                <p className="text-gray-700"><span className="font-semibold">Estimated Cost:</span> ₹{selectedProposal.cost.toLocaleString()}</p>
-                                {selectedProposal.chiefGuestName && (
-                                    <>
-                                        <p className="text-gray-700"><span className="font-semibold">Chief Guest:</span> {selectedProposal.chiefGuestName}</p>
-                                        <p className="text-gray-700"><span className="font-semibold">Chief Guest Designation:</span> {selectedProposal.chiefGuestDesignation}</p>
-                                    </>
-                                )}
-                                <p className="text-gray-700 mt-4"><span className="font-semibold">Description:</span></p>
-                                <p className="text-gray-700">{selectedProposal.description}</p>
-                            </div>
-
-                            <div className="flex justify-end space-x-4 mt-6">
-                                <button
-                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Review')}
-                                    className="btn btn-info text-white"
-                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Review')}
-                                >
-                                    Mark for Review
-                                </button>
-                                <button
-                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Done')}
-                                    className="btn btn-success text-white"
-                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Done')}
-                                >
-                                    Approve & Mark as Done
-                                </button>
-                                <button
-                                    onClick={() => updateProposalStatus(selectedProposal, 'Approved', 'Rejected')}
-                                    className="btn btn-error text-white"
-                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Rejected')}
-                                >
-                                    Reject
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        updateProposalStatus(selectedProposal, 'Approved', 'ReviewAndDone');
-
-                                    }}
-                                    className="btn btn-primary text-white"
-                                    disabled={isUpdatingStatus || selectedProposal.tags?.includes('Review') || selectedProposal.tags?.includes('Done')}
-                                >
-                                    Mark for Review & Done
-                                </button>
-                            </div>
-
-                            {statusUpdateMessage && (
-                                <div className={`mt-4 p-3 rounded-md ${statusUpdateMessage.startsWith('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                    {statusUpdateMessage}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </>
+                 <PopupCard
+                    proposal={selectedProposal}
+                    onClose={closePopup}
+                    onUpdateStatus={(newStatus, newTag, feedback) => updateProposalStatus(selectedProposal, newStatus, newTag, feedback)}
+                    isUpdatingStatus={isUpdatingStatus}
+                    statusUpdateMessage={statusUpdateMessage}
+                />
             )}
         </>
     );
 };
 
 export default function EventPortal() {
+    console.log("Event Portal Rendering");
     const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -499,13 +450,14 @@ export default function EventPortal() {
     const [statusUpdateMessage, setStatusUpdateMessage] = useState<string | null>(null);
 
     const fetchProposals = useCallback(async () => {
+        console.log("fetchProposals CALLED in Chairperson"); // Add this
         setLoading(true);
         try {
             const proposalsCollection = collection(db, 'eventProposals');
             const proposalSnapshot = await getDocs(proposalsCollection);
             const proposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data() as FirestoreProposal;
-                return {
+                 const proposal = { // Explicitly create
                     id: doc.id,
                     title: data.eventTitle,
                     organizer: data.organizingDepartment,
@@ -514,7 +466,7 @@ export default function EventPortal() {
                     category: data.category,
                     cost: data.estimatedBudget,
                     email: data.convenerEmail,
-                    description: data.eventDescription,
+                    description: data.eventDescription, // Make sure this is here
                     location: data.eventLocation,
                     convenerName: data.convenerName,
                     convenerEmail: data.convenerEmail,
@@ -523,6 +475,9 @@ export default function EventPortal() {
                     events: data.events || [],
                     tags: data.tags || [],
                 };
+                console.log("Fetched proposal in Chairperson:", proposal); // Log fetched data
+                return proposal;
+
             });
             setEventProposals(proposalsList);
         } catch (error) {
@@ -545,7 +500,7 @@ export default function EventPortal() {
         setSelectedProposal(null);
         setStatusUpdateMessage(null);
     }, []);
-    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, newTag?: string) => {
+    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, newTag?: string, feedback?: string) => {
         if (isUpdatingStatus) return;
         setIsUpdatingStatus(true);
         setStatusUpdateMessage('Updating status...');
@@ -571,13 +526,13 @@ export default function EventPortal() {
                                 updatedTags = updatedTags.filter(tag => tag !== newTag);
                             }
                         }
-                        return { ...proposal, status: newStatus, tags: updatedTags };
+                        proposal.status = newStatus; // Correct state update
+                        proposal.tags = updatedTags;  // Correct state update
+                        return proposal;
                     }
                     return proposal;
                 })
             );
-
-            setSelectedProposal(null);
 
             const proposalDocRef = doc(db, 'eventProposals', proposalToUpdate.id);
             const updateData: Partial<FirestoreProposal> = { proposalStatus: newStatus };
@@ -610,10 +565,13 @@ export default function EventPortal() {
             await updateDoc(proposalDocRef, updateData);
 
             const updatedProposal = { ...proposalToUpdate, status: newStatus, tags: updateData.tags || [] };
+
+            console.log("Data sent to API from Chairperson:", { proposal: updatedProposal, action: 'update', feedback: feedback }); // Log before API call
+
             const response = await fetch('/api/sendmail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proposal: updatedProposal, action: 'update' }),
+                body: JSON.stringify({ proposal: updatedProposal, action: 'update', feedback: feedback }), // Include feedback
             });
 
             const data = await response.json();
@@ -625,7 +583,6 @@ export default function EventPortal() {
             if (data.error) {
                 throw new Error(data.error);
             }
-
             setStatusUpdateMessage(newTag
                 ? (newTag === 'ReviewAndDone'
                     ? `Proposal status updated to Review and then marked as Done. Email sent successfully!`
