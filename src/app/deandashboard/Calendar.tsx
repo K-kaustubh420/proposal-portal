@@ -193,7 +193,7 @@ const Calendar: React.FC = () => {
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
                         <div className="flex justify-between items-start">
                             <h2 className="text-2xl font-semibold text-gray-800">{selectedEvent.title}</h2>
-                            <button onClick={closePopup} className="text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <button onClick={closePopup} className="text-gray-500 hover:text-gray-700 focus:outline-none" aria-label='close'>
                                 <X size={28} />
                             </button>
                         </div>

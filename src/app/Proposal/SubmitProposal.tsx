@@ -1,13 +1,14 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Trash2 } from 'lucide-react';
 import { db } from '@/firebase/config';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
+
 
 interface DetailedBudgetRow {
     id: number;
@@ -27,7 +28,7 @@ interface SponsorshipRow {
     rewardGiven: string;
     mode: string;
     outputSponsorWant: string;
-    aboutSponsor: string; // Added aboutSponsor field
+    aboutSponsor: string;
 }
 
 interface ChiefGuestRow {
@@ -37,6 +38,11 @@ interface ChiefGuestRow {
     address: string;
     phone: string;
 }
+interface MinimalProposal {
+    id: string;
+    eventDate: string;
+    // Add other fields you *know* are always present
+  }
 
 
 const participantCategories = [
@@ -87,13 +93,13 @@ export default function EventProposalForm() {
     const [convenerEmail, setConvenerEmail] = useState('');
     const [fundUniversity, setFundUniversity] = useState('');
     const [fundRegistration, setFundRegistration] = useState('');
-    const [ /*fundSponsorship */, setFundSponsorship] = useState('');
+    const [/*fundSponsorship*/, setFundSponsorship] = useState('');
     const [proposalId, setProposalId] = useState<string | null>(null);
     const [fundOther, setFundOther] = useState('');
     const [expectedParticipants, setExpectedParticipants] = useState('');
 
     const [selectedParticipantCategories, setSelectedParticipantCategories] = useState<string[]>([]);
-    const [selectedStudentCategories, setSelectedStudentCategories] = useState<string[]>([]); // For student sub-categories
+    const [selectedStudentCategories, setSelectedStudentCategories] = useState<string[]>([]);
 
     const [detailedBudgetRows, setDetailedBudgetRows] = useState<DetailedBudgetRow[]>([
         { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
@@ -104,36 +110,43 @@ export default function EventProposalForm() {
     const totalDetailedBudget: number = detailedBudgetRows.reduce((sum, row) => sum + (parseFloat(row.totalAmount) || 0), 0);
 
     const [sponsorshipRows, setSponsorshipRows] = useState<SponsorshipRow[]>([
-        { id: 1, category: '', amount: '', rewardGiven: '', mode: '', outputSponsorWant: '', aboutSponsor: '' } // Initialize aboutSponsor
+        { id: 1, category: '', amount: '', rewardGiven: '', mode: '', outputSponsorWant: '', aboutSponsor: '' }
     ]);
 
-    // Chief Guest Table State
     const [chiefGuestRows, setChiefGuestRows] = useState<ChiefGuestRow[]>([
       { id: 1, name: '', designation: '', address: '', phone: '' },
     ]);
 
 
-    // Calculate total sponsorship amount
     const totalSponsorshipAmount: number = sponsorshipRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
 
 
-    const calculateDuration = () => {
-        if (!startDate || !endDate) return;
-
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            setDurationEvent("Invalid date range");
-            return;
-        }
-        const diffMs = end.getTime() - start.getTime();
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-        setDurationEvent(`${days} days, ${hours} hours, ${minutes} minutes`);
-    };
+        // Calculate Duration (Improved)
+        const calculateDuration = useCallback(() => {
+            if (!startDate || !endDate) {
+                setDurationEvent("");
+                return;
+            }
+    
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+    
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                setDurationEvent("Invalid date range");
+                return;
+            }
+    
+            const diffMs = end.getTime() - start.getTime();
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+            setDurationEvent(`${days} days, ${hours} hours, ${minutes} minutes`);
+        }, [startDate, endDate]); // Dependencies of calculateDuration
+    
+        useEffect(() => {
+            calculateDuration();
+        }, [calculateDuration, startDate, endDate]); // Include calculateDuration in the dependency array
 
     const addDetailedBudgetRow = () => {
         setDetailedBudgetRows([...detailedBudgetRows, { id: detailedBudgetRows.length + 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' }]);
@@ -173,7 +186,6 @@ export default function EventProposalForm() {
     };
 
 
-    // Chief Guest Functions
     const addChiefGuestRow = () => {
       setChiefGuestRows([...chiefGuestRows, { id: chiefGuestRows.length + 1, name: '', designation: '', address: '', phone: '' }]);
     };
@@ -206,6 +218,58 @@ export default function EventProposalForm() {
         }
     };
 
+    const [dateConflictError, setDateConflictError] = useState<string | null>(null);
+    const [existingProposals, setExistingProposals] = useState<MinimalProposal[]>([]);
+
+       // Date Conflict Check (Improved, runs on date change)
+        // Date Conflict Check (Improved, runs on date change)
+        const checkDateConflict = useCallback(() => {
+            if (!startDate) {
+                setDateConflictError(null);
+                return;
+            }
+        
+            const start = new Date(startDate);
+            const selectedStartDateOnly = start.toISOString().split('T')[0];
+        
+            const conflict = existingProposals.some(proposal => {
+                if (proposal.eventDate) {
+                    const existingEventDateOnly = new Date(proposal.eventDate).toISOString().split('T')[0];
+                    return existingEventDateOnly === selectedStartDateOnly;
+                }
+                return false;
+            });
+        
+            if (conflict) {
+                setDateConflictError("An event is already scheduled for this date.  Please choose a different date, or proceed with caution.");
+            } else {
+                setDateConflictError(null);
+            }
+        }, [startDate, existingProposals]); // Dependencies for useCallback
+        
+        useEffect(() => {
+            checkDateConflict();
+        }, [checkDateConflict, startDate, existingProposals]); // Include checkDateConflict
+    
+        useEffect(() => {
+            const fetchProposals = async () => {
+                try {
+                    const eventProposalsCollection = collection(db, 'eventProposals');
+                    const proposalSnapshot = await getDocs(eventProposalsCollection);
+                    const proposalsList = proposalSnapshot.docs.map(doc => ({ // .docs added here
+                        id: doc.id,
+                        ...doc.data(),
+                    } as MinimalProposal)); // Type assertion moved here
+                    setExistingProposals(proposalsList);
+                } catch (error) {
+                    console.error("Error fetching existing proposals:", error);
+                }
+            };
+    
+            fetchProposals();
+        }, []);
+
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -214,14 +278,14 @@ export default function EventProposalForm() {
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             alert("Invalid date selection. Please choose valid start and end dates.");
-            return;
+            return; // Prevent submission with invalid dates
         }
+
 
         const diffMs = end.getTime() - start.getTime();
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
 
         const calculatedDuration = `${days} days, ${hours} hours, ${minutes} minutes`;
 
@@ -233,10 +297,10 @@ export default function EventProposalForm() {
                 organizingDepartment,
                 eventTitle,
                 eventDescription,
-                durationEvent: calculatedDuration,
+                durationEvent: calculatedDuration, // Use calculated duration
                 eventStartDate: start.toISOString(),
                 eventEndDate: end.toISOString(),
-                eventDate: start.toISOString(),
+                eventDate: start.toISOString(),  // Store the start date for conflict checks
                 category,
                 designation,
                 estimatedBudget,
@@ -247,18 +311,19 @@ export default function EventProposalForm() {
                 fundingDetails: {
                     universityFund: fundUniversity,
                     registrationFund: fundRegistration,
-                    sponsorshipFund: totalSponsorshipAmount.toString(), // Use calculated total here
+                    sponsorshipFund: totalSponsorshipAmount.toString(),
                     otherSourcesFund: fundOther,
                 },
                 detailedBudget: detailedBudgetRows,
-                sponsorshipDetailsRows: sponsorshipRows,  // Keep this
+                sponsorshipDetailsRows: sponsorshipRows,
                 chiefGuestDetails: chiefGuestRows,
                 submissionTimestamp: new Date().toISOString(),
                 proposalStatus: 'Pending',
                 participantCategories: selectedParticipantCategories,
-                studentCategories: selectedStudentCategories,  // Include student categories
+                studentCategories: selectedStudentCategories,
                 expectedParticipants,
             };
+
 
             const eventProposalsCollection = collection(db, 'eventProposals');
 
@@ -273,6 +338,7 @@ export default function EventProposalForm() {
 
             sendMail(convenerEmail);
 
+            // Reset form fields after successful submission
             setOrganizingDepartment('');
             setEventTitle('');
             setEventDescription('');
@@ -294,6 +360,7 @@ export default function EventProposalForm() {
             setSelectedParticipantCategories([]);
             setSelectedStudentCategories([]);
             setExpectedParticipants('');
+            setDateConflictError(null);
 
             setDetailedBudgetRows([
                 { id: 1, description: '', quantity: '', costPerUnit: '', totalAmount: '' },
@@ -340,7 +407,6 @@ export default function EventProposalForm() {
     }, [user]);
 
       useEffect(() => {
-        // Update fundSponsorship whenever totalSponsorshipAmount changes
         setFundSponsorship(totalSponsorshipAmount.toString());
     }, [totalSponsorshipAmount]);
 
@@ -373,8 +439,8 @@ export default function EventProposalForm() {
                 chiefGuestDesignation: searchParams.get('chiefGuestDesignation'),
                 chiefGuestAddress: searchParams.get('chiefGuestAddress'),
                 chiefGuestPhone: searchParams.get('chiefGuestPhone'),
-                participantCategories: searchParams.getAll('participantCategories'), // Retrieve as array
-                studentCategories: searchParams.getAll('studentCategories'),    // Retrieve as array
+                participantCategories: searchParams.getAll('participantCategories'),
+                studentCategories: searchParams.getAll('studentCategories'),
                 expectedParticipants: searchParams.get('expectedParticipants'),
 
             };
@@ -419,7 +485,7 @@ export default function EventProposalForm() {
                                     <select
                                         id="organizing-department"
                                         name="organizing-department"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-white leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                                        className="shadow appearance-none border rounded w-full py-2 px-3 bg-inherit text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
                                         value={organizingDepartment}
                                         onChange={(e) => setOrganizingDepartment(e.target.value)}
                                         required
@@ -500,15 +566,15 @@ export default function EventProposalForm() {
                                                 Start Date & Time
                                             </label>
                                             <DatePicker
-                                                id="start-date"
-                                                selected={startDate}
-                                                onChange={(date) => {
-                                                    setStartDate(date);
-                                                    calculateDuration();
-                                                }}
-                                                showTimeSelect
-                                                dateFormat="Pp"
-                                                className="w-full px-4 py-2 bg-transparent border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              id="start-date"
+                                              selected={startDate}
+                                               onChange={(date) => {
+                                                 setStartDate(date);
+      
+                                        }}
+                                           showTimeSelect
+                                           dateFormat="Pp"
+                                            className="w-full px-4 py-2 bg-transparent border rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
 
@@ -523,7 +589,7 @@ export default function EventProposalForm() {
                                                 selected={endDate}
                                                 onChange={(date) => {
                                                     setEndDate(date);
-                                                    calculateDuration();
+                                                
                                                 }}
                                                 showTimeSelect
                                                 dateFormat="Pp"
@@ -535,6 +601,11 @@ export default function EventProposalForm() {
                                     {durationEvent && (
                                         <p className="mt-4 text-center text-gray-800 font-semibold bg-blue-50 px-4 py-2 rounded-lg">
                                             ⏳ Duration: {durationEvent}
+                                        </p>
+                                    )}
+                                    {dateConflictError && (
+                                        <p className="mt-4 text-center text-red-500 font-semibold bg-red-100 px-4 py-2 rounded-lg">
+                                            ⚠️ {dateConflictError}
                                         </p>
                                     )}
                                 </div>
@@ -594,7 +665,7 @@ export default function EventProposalForm() {
                                         <option value="Dean">Dean</option>
                                     </select>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-gray-700 bg-white text-sm font-bold mb-2" htmlFor="past-events">
                                         Past Events (2021-2024)
@@ -820,7 +891,7 @@ export default function EventProposalForm() {
                                                 placeholder="0"
                                                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-200 leading-tight focus:outline-none focus:shadow-outline"
                                                 value={totalSponsorshipAmount}
-                                                readOnly // Make it read-only
+                                                readOnly
                                             />
                                         </div>
                                         <div>
@@ -1070,7 +1141,7 @@ export default function EventProposalForm() {
                                                                               handleSponsorshipChange(row.id, 'aboutSponsor', e.target.value);
                                                                             }
                                                                         }}
-                                                                      rows={3}  // Adjust as needed
+                                                                      rows={3}
                                                                       placeholder="Enter details about the sponsor (max 200 words)"
                                                                     />
                                                                     <p className="text-sm text-gray-500 mt-1">
@@ -1087,9 +1158,14 @@ export default function EventProposalForm() {
                                   </div>
 
                                 <div className="mt-10">
-                                    <button type="submit" className="btn btn-primary w-full rounded-full text-lg font-semibold py-3 hover:shadow-xl transition-shadow duration-300">
-                                        {proposalId ? 'Update Proposal' : 'Submit Proposal'}
-                                    </button>
+                                <div className="mt-10">
+                         <button
+                        type="submit"
+                         className="btn btn-primary w-full rounded-full text-lg font-semibold py-3 hover:shadow-xl transition-shadow duration-300"
+                           >
+                           {proposalId ? 'Update Proposal' : 'Submit Proposal'}
+                      </button>
+                                </div>
                                 </div>
                             </form>
                         </div>
