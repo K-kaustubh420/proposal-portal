@@ -10,9 +10,9 @@ import {
     AlertCircle,
     XCircle,
     MoreVertical,
-    ArrowUp, // Import ArrowUp icon
-    ArrowDown, // Import ArrowDown icon
-} from 'lucide-react'; // Import icons
+    ArrowUp,
+    ArrowDown,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DocumentData } from 'firebase/firestore';
 
@@ -36,9 +36,17 @@ interface Proposal {
     hall?: number;
     detailedBudget?: { mainCategory: string; subCategory: string; totalAmount: number }[];
     actualBudget?: { label: string; amount: number }[];
-    read?: boolean; // Track read status
-    starred?: boolean; // Track starred status
-    reviewLater?: boolean; // Track "review later" status
+    chiefGuests?: ChiefGuest[]; // Add chiefGuests to the Proposal interface
+    read?: boolean;
+    starred?: boolean;
+    reviewLater?: boolean;
+}
+
+interface ChiefGuest {  // Keep the ChiefGuest interface
+  name: string;
+  accountNumber: string;
+  bankName: string;
+  ifscCode: string;
 }
 
 const LoadingComponent = () => (
@@ -56,7 +64,6 @@ const ViewBills: React.FC = () => {
         setLoading(true);
         try {
             const proposalsCollection = collection(db, 'eventProposals');
-            // Fetch all "Approved" proposals (and "Done" if you still want them)
             const q = query(proposalsCollection, where("proposalStatus", "in", ["Approved", "Done"]));
 
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -81,36 +88,36 @@ const ViewBills: React.FC = () => {
                         convenerEmail: data.convenerEmail,
                         detailedBudget: data.detailedBudget || [],
                         actualBudget: data.actualBudget || [],
+                        chiefGuests: data.chiefGuests || [], // Get chiefGuests from Firestore
                         read: data.read || false,
                         starred: data.starred || false,
                         reviewLater: data.reviewLater || false,
                     } as Proposal;
                 });
 
-                // Filter bills:
                 const validBills = billsData.filter(bill => {
                     if (bill.actualBudget === undefined || bill.actualBudget.length === 0) {
-                        return false; // Exclude if no actualBudget
+                        return false;
                     }
 
                     if (bill.status === "Approved") {
                         if (bill.endDate) {
                             const endDate = new Date(bill.endDate);
                             const currentDate = new Date();
-                            currentDate.setHours(0, 0, 0, 0); // Set current date to start of day for comparison
-                            endDate.setHours(0, 0, 0, 0);     // Set end date to start of day for comparison
-                            return endDate < currentDate; // Only include if endDate is before today
+                            currentDate.setHours(0, 0, 0, 0);
+                            endDate.setHours(0, 0, 0, 0);
+                            return endDate < currentDate;
                         } else {
-                            return false; // If status is "Approved" but no endDate, exclude (or handle as needed)
+                            return false;
                         }
                     } else if (bill.status === "Done") {
-                        return true; // Include "Done" status bills regardless of end date (adjust if needed)
+                        return true;
                     }
 
-                    return false; // Exclude other statuses (or handle them as needed)
+                    return false;
                 });
 
-                console.log("Valid bills after date and status filter:", validBills.length); // Log the filtered count
+                console.log("Valid bills after date and status filter:", validBills.length);
                 setBills(validBills);
                 setLoading(false);
             });
@@ -141,16 +148,15 @@ const ViewBills: React.FC = () => {
             await updateDoc(billRef, {
                 read: !bill.read
             });
-            //  Refetch after updating.  More efficient than trying to update local state.
             fetchBills();
         } catch (error) {
             console.error("Error toggling read status:", error);
         }
-    }, [bills, fetchBills]); //  Dependencies for useCallback
+    }, [bills, fetchBills]);
 
     const toggleStarred = useCallback(async (id: string) => {
         const bill = bills.find((b) => b.id === id);
-        if (!bill) return;  //  Handle case where bill might not be found
+        if (!bill) return;
         try {
             const billRef = doc(db, "eventProposals", id);
             await updateDoc(billRef, {
@@ -165,7 +171,7 @@ const ViewBills: React.FC = () => {
 
     const toggleReviewLater = useCallback(async (id: string) => {
         const bill = bills.find((b) => b.id === id);
-        if (!bill) return; // Handle case where bill is not found
+        if (!bill) return;
         try {
             const billRef = doc(db, "eventProposals", id);
             await updateDoc(billRef, {
@@ -185,13 +191,13 @@ const ViewBills: React.FC = () => {
         setSelectedBill(null);
     }, []);
 
-    // Helper function to calculate total proposed budget
+
     const calculateTotalProposedBudget = useCallback((detailedBudget: { mainCategory: string; subCategory: string; totalAmount: number }[] | undefined) => {
         if (!detailedBudget) return 0;
         return detailedBudget.reduce((acc, item) => acc + (item.totalAmount || 0), 0);
     }, []);
 
-    // Helper function to calculate total actual budget
+
     const calculateTotalActualBudget = useCallback((actualBudget: { label: string; amount: number }[] | undefined) => {
         if (!actualBudget) return 0;
         return actualBudget.reduce((acc, item) => acc + item.amount, 0);
@@ -207,14 +213,12 @@ const ViewBills: React.FC = () => {
                 <h1 className="text-2xl font-bold text-blue-700 mb-4">View Bills</h1>
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="border-b border-gray-200">
-                        {/* Toolbar (Optional) -  Add filtering/sorting here if needed */}
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        {/* Checkbox for select all (optional) */}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
@@ -288,7 +292,7 @@ const ViewBills: React.FC = () => {
                                                         toggleRead(bill.id);
                                                     }}
                                                     title="Mark as Read/Unread"
-                                                    aria-label="mark as read/unread"
+                                                   aria-label="Mark as Read/Unread"
                                                 >
                                                     {bill.read ? (
                                                         <Inbox className="h-5 w-5 text-gray-500 hover:text-gray-700" />
@@ -302,7 +306,7 @@ const ViewBills: React.FC = () => {
                                                         toggleStarred(bill.id);
                                                     }}
                                                     title="Star/Unstar"
-                                                    aria-label='Star/Unstar'
+                                                   aria-label="Star/Unstar"
                                                 >
                                                     <Star
                                                         className={`h-5 w-5 ${bill.starred
@@ -317,7 +321,7 @@ const ViewBills: React.FC = () => {
                                                         toggleReviewLater(bill.id);
                                                     }}
                                                     title="Review Later"
-                                                    aria-label='Review Later'
+                                                   aria-label="Review Later"
                                                 >
                                                     <AlertCircle
                                                         className={`h-5 w-5 ${bill.reviewLater
@@ -326,14 +330,12 @@ const ViewBills: React.FC = () => {
                                                             } hover:text-blue-600`}
                                                     />
                                                 </button>
-
-                                                {/* More Options (Dropdown - optional) */}
                                                 <div className="relative inline-block text-left">
                                                     <button
                                                         type="button"
                                                         className="flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
                                                         onClick={(e) => { e.stopPropagation(); }}
-                                                        aria-label='button title'
+                                                       aria-label="more options"
                                                     >
                                                         <MoreVertical className="h-5 w-5" />
                                                     </button>
@@ -368,7 +370,7 @@ const ViewBills: React.FC = () => {
                     >
                         <div className="flex justify-between rounded-md items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-800">Bill Details - {selectedBill.title}</h2>
-                            <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label='closepopup'>
+                            <button onClick={closePopup} className="text-gray-600 hover:text-gray-800" aria-label="close popup">
                                 <XCircle className="h-6 w-6" />
                             </button>
                         </div>
@@ -408,15 +410,14 @@ const ViewBills: React.FC = () => {
                                     <tr>
                                         <th>Label</th>
                                         <th>Amount</th>
-                                        <th>Comparison</th>{/* Added Comparison column */}
+                                        <th>Comparison</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {selectedBill.actualBudget && selectedBill.actualBudget.length > 0 ? (
                                         selectedBill.actualBudget.map((item, index) => {
-                                            // Find corresponding proposed amount (if it exists)
                                             const proposedAmount = selectedBill.detailedBudget?.find(
-                                                (proposedItem) => proposedItem.mainCategory === item.label // Match by label (adjust as needed)
+                                                (proposedItem) => proposedItem.mainCategory === item.label
                                             )?.totalAmount || 0;
 
                                             return (
@@ -425,11 +426,11 @@ const ViewBills: React.FC = () => {
                                                     <td>${item.amount.toLocaleString()}</td>
                                                     <td>
                                                         {item.amount > proposedAmount ? (
-                                                            <ArrowUp className="text-red-500 h-5 w-5" />  // Up arrow for higher
+                                                            <ArrowUp className="text-red-500 h-5 w-5" />
                                                         ) : item.amount < proposedAmount ? (
-                                                            <ArrowDown className="text-green-500 h-5 w-5" /> // Down arrow for lower
+                                                            <ArrowDown className="text-green-500 h-5 w-5" />
                                                         ) : (
-                                                            "" // No arrow if equal (or handle as you prefer)
+                                                            ""
                                                         )}
                                                     </td>
                                                 </tr>
@@ -437,12 +438,11 @@ const ViewBills: React.FC = () => {
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={3} className="text-center italic">  {/* Changed colSpan to 3 */}
+                                            <td colSpan={3} className="text-center italic">
                                                 No actual budget details provided.
                                             </td>
                                         </tr>
                                     )}
-                                    {/* Total Row (Optional) */}
                                     <tr>
                                         <td className="font-bold">Total:</td>
                                         <td className="font-bold">
@@ -458,11 +458,41 @@ const ViewBills: React.FC = () => {
                                                 } else if (totalActual < totalProposed) {
                                                     return <ArrowDown className="text-green-500 h-5 w-5" />;
                                                 }
-                                                return null; // Or some other indicator for equality
+                                                return null;
                                             })()}
                                         </td>
                                     </tr>
 
+                                </tbody>
+                            </table>
+                        </div>
+                          {/* Chief Guest Details Table */}
+                          <h3 className="text-lg font-semibold mt-6 mb-2">Chief Guest Details</h3>
+                        <div className="overflow-x-auto">
+                            <table className="table w-full">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Account Number</th>
+                                        <th>Bank Name</th>
+                                        <th>IFSC Code</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedBill.chiefGuests && selectedBill.chiefGuests.length > 0 ? (
+                                        selectedBill.chiefGuests.map((guest, index) => (
+                                            <tr key={index}>
+                                                <td>{guest.name}</td>
+                                                <td>{guest.accountNumber}</td>
+                                                <td>{guest.bankName}</td>
+                                                <td>{guest.ifscCode}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="text-center italic">No chief guest details provided.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

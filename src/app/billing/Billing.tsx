@@ -26,12 +26,20 @@ interface Proposal {
   hall?: number;
   detailedBudget?: { mainCategory: string; subCategory: string; totalAmount: number; type?: string }[];
   actualBudget?: { label: string; amount: number; type?: string }[];
+  chiefGuests?: ChiefGuest[]; // Array of chief guests
 }
 
 interface BudgetItem {
   label: string;
   amount: number;
   type?: string;
+}
+
+interface ChiefGuest {
+  name: string;
+  accountNumber: string;
+  bankName: string;
+  ifscCode: string;
 }
 
 const LoadingComponent = () => (
@@ -48,6 +56,8 @@ const Bill: React.FC = () => {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null | undefined>(null);
   const [actualBudget, setActualBudget] = useState<BudgetItem[]>([]);
   const [newBudgetItem, setNewBudgetItem] = useState<BudgetItem>({ label: '', amount: 0, type: 'Domestic' });
+  const [chiefGuests, setChiefGuests] = useState<ChiefGuest[]>([]); // State for chief guests
+  const [newChiefGuest, setNewChiefGuest] = useState<ChiefGuest>({ name: '', accountNumber: '', bankName: '', ifscCode: '' });
 
   useEffect(() => {
     const authInstance = getAuth(app);
@@ -87,6 +97,7 @@ const Bill: React.FC = () => {
             convenerEmail: data.convenerEmail,
             detailedBudget: data.detailedBudget || [],
             actualBudget: data.actualBudget || [],
+            chiefGuests: data.chiefGuests || [], // Initialize chiefGuests
           } as Proposal;
         });
 
@@ -129,12 +140,15 @@ const Bill: React.FC = () => {
   const handleProposalClick = useCallback((proposal: Proposal) => {
     setSelectedProposal(proposal);
     setActualBudget(proposal.actualBudget || []);
+    setChiefGuests(proposal.chiefGuests || []); // Load chief guests
   }, []);
 
   const closePopup = useCallback(() => {
     setSelectedProposal(null);
     setActualBudget([]);
     setNewBudgetItem({ label: '', amount: 0, type: 'Domestic' });
+    setChiefGuests([]);          // Reset Chief Guest
+    setNewChiefGuest({ name: '', accountNumber: '', bankName: '', ifscCode: '' });
   }, []);
 
   const addBudgetItem = useCallback(() => {
@@ -149,12 +163,28 @@ const Bill: React.FC = () => {
     setActualBudget(updatedBudget);
   }, [actualBudget]);
 
+  // Add chief guest handler
+  const addChiefGuest = useCallback(() => {
+    if (newChiefGuest.name.trim() && newChiefGuest.accountNumber.trim() && newChiefGuest.bankName.trim() && newChiefGuest.ifscCode.trim()) {
+      setChiefGuests(prevGuests => [...prevGuests, newChiefGuest]);
+      setNewChiefGuest({ name: '', accountNumber: '', bankName: '', ifscCode: '' }); // Clear input fields
+    }
+  }, [newChiefGuest]);
+
+
+  // Remove chief guest handler
+  const removeChiefGuest = useCallback((index: number) => {
+    const updatedGuests = chiefGuests.filter((_, i) => i !== index);
+    setChiefGuests(updatedGuests);
+  }, [chiefGuests]);
+
   const saveActualBudget = useCallback(async () => {
     if (!selectedProposal) return;
     try {
       const proposalRef = doc(db, 'eventProposals', selectedProposal.id);
       await updateDoc(proposalRef, {
-        actualBudget: actualBudget
+        actualBudget: actualBudget,
+        chiefGuests: chiefGuests, // Save chief guests
       });
       closePopup();
       alert("Budget updated successfully!");
@@ -168,7 +198,7 @@ const Bill: React.FC = () => {
       console.error("Error updating actual budget:", error);
       alert("Error updating budget. Please try again.");
     }
-  }, [selectedProposal, actualBudget, closePopup, currentUserEmail, fetchUserProposals]);
+  }, [selectedProposal, actualBudget, closePopup, currentUserEmail, fetchUserProposals, chiefGuests]);
 
   if (loading) {
     return <LoadingComponent />;
@@ -216,19 +246,19 @@ const Bill: React.FC = () => {
     return budgetCategories[mainCategory] || [];
   };
 
-    // Calculate total estimated and actual amounts
-    const totalEstimatedAmount = selectedProposal?.detailedBudget?.reduce((acc, item) => acc + item.totalAmount, 0) || 0;
-    const totalActualAmount = actualBudget.reduce((acc, item) => acc + item.amount, 0);
+  // Calculate total estimated and actual amounts
+  const totalEstimatedAmount = selectedProposal?.detailedBudget?.reduce((acc, item) => acc + item.totalAmount, 0) || 0;
+  const totalActualAmount = actualBudget.reduce((acc, item) => acc + item.amount, 0);
 
-    // Function to compare and display arrows
-    const compareBudget = (actual: number, estimated: number) => {
-      if (actual > estimated) {
-        return <ArrowUp className="text-red-500 h-5 w-5" />;
-      } else if (actual < estimated) {
-        return <ArrowDown className="text-green-500 h-5 w-5" />;
-      }
-      return null; // No arrow if equal
-    };
+  // Function to compare and display arrows
+  const compareBudget = (actual: number, estimated: number) => {
+    if (actual > estimated) {
+      return <ArrowUp className="text-red-500 h-5 w-5" />;
+    } else if (actual < estimated) {
+      return <ArrowDown className="text-green-500 h-5 w-5" />;
+    }
+    return null; // No arrow if equal
+  };
 
   return (
     <div className="bg-slate-100 min-h-screen p-4">
@@ -333,11 +363,11 @@ const Bill: React.FC = () => {
                     </tr>
                   )}
                 </tbody>
-                 <tfoot>
-                    <tr className="bg-gray-100">
-                        <td colSpan={3} className="text-right font-bold">Total Estimated:</td>
-                        <td>${totalEstimatedAmount.toLocaleString()}</td>
-                    </tr>
+                <tfoot>
+                  <tr className="bg-gray-100">
+                    <td colSpan={3} className="text-right font-bold">Total Estimated:</td>
+                    <td>${totalEstimatedAmount.toLocaleString()}</td>
+                  </tr>
                 </tfoot>
               </table>
             </div>
@@ -439,28 +469,28 @@ const Bill: React.FC = () => {
                     <td>
                       <div className="form-control">
                         <label className="cursor-pointer label">
-                            <input
-                                type="radio"
-                                name="budgetType"
-                                className="radio radio-primary"
-                                value="Domestic"
-                                checked={newBudgetItem.type === 'Domestic'}
-                                onChange={() => setNewBudgetItem({ ...newBudgetItem, type: 'Domestic' })}
-                            />
-                            <span className="label-text ml-2">Domestic</span>
+                          <input
+                            type="radio"
+                            name="budgetType"
+                            className="radio radio-primary"
+                            value="Domestic"
+                            checked={newBudgetItem.type === 'Domestic'}
+                            onChange={() => setNewBudgetItem({ ...newBudgetItem, type: 'Domestic' })}
+                          />
+                          <span className="label-text ml-2">Domestic</span>
                         </label>
                         <label className="cursor-pointer label">
-                            <input
-                                type="radio"
-                                name="budgetType"
-                                className="radio radio-primary"
-                                value="International"
-                                checked={newBudgetItem.type === 'International'}
-                                onChange={() => setNewBudgetItem({ ...newBudgetItem, type: 'International' })}
-                            />
-                            <span className="label-text ml-2">International</span>
+                          <input
+                            type="radio"
+                            name="budgetType"
+                            className="radio radio-primary"
+                            value="International"
+                            checked={newBudgetItem.type === 'International'}
+                            onChange={() => setNewBudgetItem({ ...newBudgetItem, type: 'International' })}
+                          />
+                          <span className="label-text ml-2">International</span>
                         </label>
-                    </div>
+                      </div>
                     </td>
                     <td>
                       <input
@@ -499,6 +529,91 @@ const Bill: React.FC = () => {
                 </tfoot>
               </table>
             </div>
+
+            {/* Chief Guest Details Section */}
+            <h3 className="text-xl font-semibold mt-8 mb-3">Chief Guest Details</h3>
+            <div className="overflow-x-auto rounded-md shadow-sm mb-4">
+              <table className="table w-full">
+                <thead className="bg-base-300">
+                  <tr>
+                    <th>Name</th>
+                    <th>Account Number</th>
+                    <th>Bank Name</th>
+                    <th>IFSC Code</th>
+                    <th className="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chiefGuests.map((guest, index) => (
+                    <tr key={index} className="hover:bg-blue-200">
+                      <td>{guest.name}</td>
+                      <td>{guest.accountNumber}</td>
+                      <td>{guest.bankName}</td>
+                      <td>{guest.ifscCode}</td>
+                      <td className="text-right">
+                        <button
+                          className="btn btn-xs btn-error btn-square"
+                          onClick={() => removeChiefGuest(index)}
+                          aria-label="Remove guest"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        className="input input-bordered input-sm w-full"
+                        value={newChiefGuest.name}
+                        onChange={(e) => setNewChiefGuest({ ...newChiefGuest, name: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Account Number"
+                        className="input input-bordered input-sm w-full"
+                        value={newChiefGuest.accountNumber}
+                        onChange={(e) => setNewChiefGuest({ ...newChiefGuest, accountNumber: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Bank Name"
+                        className="input input-bordered input-sm w-full"
+                        value={newChiefGuest.bankName}
+                        onChange={(e) => setNewChiefGuest({ ...newChiefGuest, bankName: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="IFSC Code"
+                        className="input input-bordered input-sm w-full"
+                        value={newChiefGuest.ifscCode}
+                        onChange={(e) => setNewChiefGuest({ ...newChiefGuest, ifscCode: e.target.value })}
+                      />
+                    </td>
+                    <td className="text-right">
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={addChiefGuest}
+                        disabled={!newChiefGuest.name.trim() || !newChiefGuest.accountNumber.trim() || !newChiefGuest.bankName.trim() || !newChiefGuest.ifscCode.trim()}
+                      >
+                        Add
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+
+
             <div className="mt-6 flex justify-end">
               <button
                 className="btn btn-primary"
