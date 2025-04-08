@@ -418,6 +418,7 @@ const Bill: React.FC = () => {
                             label: `${mainCategory} - ${subCategory}`,
                           });
                         }}
+                        aria-label='Bill select option'
                       >
                         <option
                           value=""
@@ -448,6 +449,7 @@ const Bill: React.FC = () => {
                             label: `${mainCategory} - ${subCategory}`,
                           });
                         }}
+                         aria-label='Select a Sub Category'
                       >
                         <option
                           value=""

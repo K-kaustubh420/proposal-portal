@@ -1,7 +1,8 @@
+// chairperson dashboard.tsx
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { ScriptableScaleContext } from 'chart.js'; // CORRECT IMPORT
+import { ScriptableScaleContext } from 'chart.js';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -15,7 +16,7 @@ import {
     Filler,
     TooltipItem,
     ChartOptions,
-    GridLineOptions // Import GridLineOptions
+    GridLineOptions
 } from 'chart.js';
 import {
     ListChecks,
@@ -24,11 +25,11 @@ import {
     CheckCircle,
     Info,
 } from 'lucide-react';
-import { db } from '@/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
-import Calendar from './Calendar'; // Import the Calendar component
-import PopupCard from './PopupCard'; // Import PopupCard
-
+import { db, app } from '@/firebase/config';
+import { collection, getDocs, doc, updateDoc, DocumentData, query, where } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import Calendar from './Calendar';
+import PopupCard from './PopupCard';
 
 ChartJS.register(
     CategoryScale,
@@ -102,7 +103,7 @@ const lineData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [{
         label: 'Monthly Submissions',
-        data: [60, 55, 40, 85, 64, 70, 94, 34, 78, 54, 76, 56],
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         borderColor: '#3b82f6',
         borderWidth: 3,
         fill: true,
@@ -152,6 +153,7 @@ interface FirestoreProposal extends DocumentData {
     chiefGuestDesignation?: string;
     events?: { eventTitle: string }[];
     tags?: string[];
+    clarificationMessage?: string;
 }
 
 interface Proposal {
@@ -171,6 +173,7 @@ interface Proposal {
     chiefGuestDesignation?: string;
     events?: { eventTitle: string }[];
     tags?: string[];
+    clarificationMessage?: string;
 }
 
 const LineChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), {
@@ -186,12 +189,6 @@ const PieChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie),
 const LoadingComponent = () => (
     <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
         Loading proposals...
-    </div>
-);
-
-const NoProposalsComponent = () => (
-    <div className="bg-gray-100 min-h-screen font-sans text-gray-900 flex justify-center items-center">
-        No proposals available.
     </div>
 );
 
@@ -224,7 +221,7 @@ const DashboardContent: React.FC<{
     statusUpdateMessage: string | null;
     handleProposalClick: (proposal: Proposal) => void;
     closePopup: () => void;
-    updateProposalStatus: (proposal: Proposal, newStatus: string, newTag?: string, feedback?: string) => Promise<void>;
+    updateProposalStatus: (proposal: Proposal, newStatus: string, clarificationMessage?: string) => Promise<void>;
 }> = ({
     eventProposals,
     loading,
@@ -235,55 +232,55 @@ const DashboardContent: React.FC<{
     closePopup,
     updateProposalStatus
 }) => {
-
-    const approvedProposals = eventProposals.filter(p => p.status === 'Approved');
+    const approvedProposals = eventProposals.filter(p =>
+        p.status === 'ApprovedByChair' ||
+        p.status === 'ApprovedByAssociateChair' ||
+        p.status === 'AwaitingAssociateChairClarification'
+    );
     const approvedCount = approvedProposals.length;
-    const reviewCount = approvedProposals.filter(p => p.tags?.includes('Review')).length;
-    const rejectedCount = approvedProposals.filter(p => p.tags?.includes('Rejected')).length;
-    const doneCount = approvedProposals.filter(p => p.tags?.includes('Done')).length;
 
     const pieData = {
-        labels: ['Approved', 'Review', 'Rejected', 'Done'],
+        labels: ['Approved'],
         datasets: [{
             label: 'Proposal Status',
-            data: [approvedCount - reviewCount - rejectedCount - doneCount, reviewCount, rejectedCount, doneCount],
-            backgroundColor: ['#A78BFA', '#3AB7BF', '#EF4444', '#82E0AA'],
+            data: [approvedCount],
+            backgroundColor: ['#A78BFA'],
             borderWidth: 0,
             hoverOffset: 5
         }],
     };
 
     const [showLineChart, setShowLineChart] = useState(false);
-    const [showTable, setShowTable] = useState(true); // State to control table/calendar display
+    const [showTable, setShowTable] = useState(true);
 
+    const monthlyCounts = useMemo(() => {
+        const counts = Array(12).fill(0);
+        eventProposals.forEach(proposal => {
+            if (proposal.date) {
+                const proposalDate = new Date(proposal.date);
+                if (!isNaN(proposalDate.getTime())) {
+                    counts[proposalDate.getMonth()]++;
+                } else {
+                    console.error("Invalid date format:", proposal.date);
+                }
+            } else {
+                console.warn("Proposal missing date:", proposal);
+            }
+        });
+        return counts;
+    }, [eventProposals]);
+
+    const updatedLineData = useMemo(() => ({
+        ...lineData,
+        datasets: [{
+            ...lineData.datasets[0],
+            data: monthlyCounts,
+        }],
+    }), [monthlyCounts]);
 
     if (loading) {
         return <LoadingComponent />;
     }
-
-    if (approvedProposals.length === 0) {
-        return <NoProposalsComponent />;
-    }
-
-    const getBadgeClass = (tags?: string[]) => {
-        if (!tags) {
-            return 'badge-success';
-        }
-        if (tags.includes('Done')) return 'badge-primary';
-        if (tags.includes('Review')) return 'badge-info';
-        if (tags.includes('Rejected')) return 'badge-error';
-        return 'badge-success';
-    };
-
-    const getBadgeText = (tags?: string[]) => {
-        if (!tags) {
-            return 'Approved';
-        }
-        if (tags.includes('Done')) return 'Done';
-        if (tags.includes('Review')) return 'Review';
-        if (tags.includes('Rejected')) return 'Rejected';
-        return 'Approved';
-    };
 
     return (
         <>
@@ -314,43 +311,29 @@ const DashboardContent: React.FC<{
                                 <div className="stat-value">{approvedCount.toLocaleString()}</div>
                                 <div className="stat-title">Total Approved</div>
                             </div>
-                            <div className="card stat shadow-md rounded-lg border-t-4 border-green-500 bg-white">
-                                <div className="stat-figure text-green-500"><CheckCircle className="h-6 w-6" /></div>
-                                <div className="stat-value">{doneCount.toLocaleString()}</div>
-                                <div className="stat-title">Done</div>
-                            </div>
-                            <div className="card stat shadow-md rounded-lg border-t-4 border-red-500 bg-white">
-                                <div className="stat-figure text-red-500"><XCircle className="h-6 w-6" /></div>
-                                <div className="stat-value">{rejectedCount.toLocaleString()}</div>
-                                <div className="stat-title">Rejected</div>
-                            </div>
-                            <div className="card stat shadow-md rounded-lg border-t-4 border-info bg-white">
-                                <div className="stat-figure text-info"><Clock className="h-6 w-6" /></div>
-                                <div className="stat-value">{reviewCount.toLocaleString()}</div>
-                                <div className="stat-title">Review</div>
-                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 w-auto lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-8">
-                                <div className="card  shadow-md rounded-lg bg-white">
+                                <div className="card shadow-md rounded-lg bg-white">
                                     <div className="card-body">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="card-title text-lg font-bold text-gray-700">
-                                            {showTable ? "Approved Proposals Inbox" : "Calendar View"}
-                                        </h2>
-                                        <div className="form-control">
-                                            <label className="label cursor-pointer">
-                                                <span className="label-text">Show Calendar</span>
-                                                <input
-                                                    type="checkbox"
-                                                    className="toggle"
-                                                    checked={!showTable}                                                    onChange={() => setShowTable(!showTable)}
-                                                    aria-label='Show Calendar'
-                                                />
-                                            </label>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h2 className="card-title text-lg font-bold text-gray-700">
+                                                {showTable ? "Approved Proposals Inbox" : "Calendar View"}
+                                            </h2>
+                                            <div className="form-control">
+                                                <label className="label cursor-pointer">
+                                                    <span className="label-text">Show Calendar</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="toggle"
+                                                        checked={!showTable}
+                                                        onChange={() => setShowTable(!showTable)}
+                                                        aria-label='Show Calendar'
+                                                    />
+                                                </label>
+                                            </div>
                                         </div>
-                                     </div>
                                         {showTable ? (
                                             <div className="overflow-x-auto">
                                                 <table className="table table-compact w-full">
@@ -367,12 +350,16 @@ const DashboardContent: React.FC<{
                                                     <tbody>
                                                         {approvedProposals.map((proposal) => (
                                                             <tr key={proposal.id} className="hover:bg-gray-100 cursor-pointer" onClick={() => handleProposalClick(proposal)}>
+
                                                                 <td>
-                                                                    <input type="checkbox" className="checkbox" aria-label='checkbox' />
-                                                                </td>
-                                                                <td>
-                                                                    <div className={`badge badge-sm ${getBadgeClass(proposal.tags)}`}>
-                                                                        {getBadgeText(proposal.tags)}
+                                                                    <div className={`badge badge-sm ${
+                                                                        proposal.status === 'ApprovedByChair' ? 'badge-success' :
+                                                                            proposal.status === 'ApprovedByAssociateChair' ? 'badge-info' :
+                                                                            'badge-warning'
+                                                                    }`}>
+                                                                        {proposal.status === 'ApprovedByChair' ? 'Approved' :
+                                                                            proposal.status === 'ApprovedByAssociateChair' ? 'Pending Approval' :
+                                                                            'Awaiting Clarification'}
                                                                     </div>
                                                                 </td>
                                                                 <td>{proposal.title}</td>
@@ -385,8 +372,8 @@ const DashboardContent: React.FC<{
                                                 </table>
                                             </div>
                                         ) : (
-                                           <div className="overflow-x-auto w-full">
-                                                <Calendar/>
+                                            <div className="overflow-x-auto w-full">
+                                                <Calendar />
                                             </div>
                                         )}
                                     </div>
@@ -416,7 +403,7 @@ const DashboardContent: React.FC<{
                                     </div>
                                     <div className="h-64 relative text-slate-800">
                                         {showLineChart ? (
-                                            <LineChart data={lineData} options={lineOptions} />
+                                            <LineChart data={updatedLineData} options={lineOptions} />
                                         ) : (
                                             <PieChart data={pieData} options={pieDataOptions} />
                                         )}
@@ -429,12 +416,14 @@ const DashboardContent: React.FC<{
             </div>
 
             {selectedProposal && (
-                 <PopupCard
+                <PopupCard
                     proposal={selectedProposal}
                     onClose={closePopup}
-                    onUpdateStatus={(newStatus, newTag, feedback) => updateProposalStatus(selectedProposal, newStatus, newTag, feedback)}
+                    onUpdateStatus={(newStatus, clarificationMessage) => updateProposalStatus(selectedProposal, newStatus, clarificationMessage)}
                     isUpdatingStatus={isUpdatingStatus}
                     statusUpdateMessage={statusUpdateMessage}
+                    showReject={false}
+                    showRequestInfo={true}
                 />
             )}
         </>
@@ -442,22 +431,36 @@ const DashboardContent: React.FC<{
 };
 
 export default function EventPortal() {
-    console.log("Event Portal Rendering");
     const [eventProposals, setEventProposals] = useState<Proposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [statusUpdateMessage, setStatusUpdateMessage] = useState<string | null>(null);
+    const [userDepartments, setUserDepartments] = useState<string[]>([]);
+    const [userRole, setUserRole] = useState<string | null>(null);
+
+    const chairEmailDepartmentMap = useMemo(() => ({
+        "kn3959@srmist.edu.in": ["Ctech", "Cintel" ],
+    }), []);
 
     const fetchProposals = useCallback(async () => {
-        console.log("fetchProposals CALLED in Chairperson"); // Add this
+        console.log("fetchProposals CALLED in Chairperson with departments:", userDepartments);
         setLoading(true);
         try {
-            const proposalsCollection = collection(db, 'eventProposals');
-            const proposalSnapshot = await getDocs(proposalsCollection);
+            if (userDepartments.length === 0) {
+                console.warn("No departments assigned to this Chair.");
+                setEventProposals([]);
+                return;
+            }
+            const q = query(
+                collection(db, 'eventProposals'),
+                where("organizingDepartment", "in", userDepartments),
+                where("proposalStatus", "in", ["ApprovedByAssociateChair", "AwaitingAssociateChairClarification"])
+            );
+            const proposalSnapshot = await getDocs(q);
             const proposalsList = proposalSnapshot.docs.map(doc => {
                 const data = doc.data() as FirestoreProposal;
-                 const proposal = { // Explicitly create
+                const proposal = {
                     id: doc.id,
                     title: data.eventTitle,
                     organizer: data.organizingDepartment,
@@ -466,7 +469,7 @@ export default function EventPortal() {
                     category: data.category,
                     cost: data.estimatedBudget,
                     email: data.convenerEmail,
-                    description: data.eventDescription, // Make sure this is here
+                    description: data.eventDescription,
                     location: data.eventLocation,
                     convenerName: data.convenerName,
                     convenerEmail: data.convenerEmail,
@@ -474,23 +477,49 @@ export default function EventPortal() {
                     chiefGuestDesignation: data.chiefGuestDesignation,
                     events: data.events || [],
                     tags: data.tags || [],
+                    clarificationMessage: data.clarificationMessage || '',
                 };
-                console.log("Fetched proposal in Chairperson:", proposal); // Log fetched data
+                console.log("Fetched proposal:", proposal);
                 return proposal;
-
             });
             setEventProposals(proposalsList);
+            console.log("Set eventProposals:", proposalsList);
         } catch (error) {
             console.error("Error fetching proposals:", error);
-            setStatusUpdateMessage("Error fetching proposals.  Please try again later.");
+            setStatusUpdateMessage("Error fetching proposals. Please try again later.");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [userDepartments]);
 
     useEffect(() => {
-        fetchProposals();
-    }, [fetchProposals]);
+        const authInstance = getAuth(app);
+        const unsubscribe = onAuthStateChanged(authInstance, (user: User | null) => {
+            if (user && user.email) {
+                const email = user.email;
+                if (chairEmailDepartmentMap.hasOwnProperty(email)) {
+                    setUserDepartments(chairEmailDepartmentMap[email as keyof typeof chairEmailDepartmentMap]);
+                    setUserRole('Chair');
+                    console.log("User Departments set to:", chairEmailDepartmentMap[email as keyof typeof chairEmailDepartmentMap]);
+                } else {
+                    setUserDepartments([]);
+                    setUserRole(null);
+                    console.log("No departments assigned for email:", email);
+                }
+            } else {
+                setUserDepartments([]);
+                setUserRole(null);
+                console.log("No user logged in");
+            }
+        });
+        return () => unsubscribe();
+    }, [chairEmailDepartmentMap]);
+
+    useEffect(() => {
+        if (userDepartments.length > 0) {
+            fetchProposals();
+        }
+    }, [fetchProposals, userDepartments]);
 
     const handleProposalClick = useCallback((proposal: Proposal) => {
         setSelectedProposal(proposal);
@@ -500,96 +529,74 @@ export default function EventPortal() {
         setSelectedProposal(null);
         setStatusUpdateMessage(null);
     }, []);
-    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, newTag?: string, feedback?: string) => {
+
+    const updateProposalStatus = useCallback(async (proposalToUpdate: Proposal, newStatus: string, clarificationMessage?: string) => {
         if (isUpdatingStatus) return;
         setIsUpdatingStatus(true);
         setStatusUpdateMessage('Updating status...');
 
         try {
+            if (!userDepartments.includes(proposalToUpdate.organizer)) {
+                alert("You are not authorized to modify this proposal.");
+                return;
+            }
+
+            let updatedStatus = newStatus;
+            if (newStatus === 'Approved') {
+                updatedStatus = 'Approved';
+            } else if (newStatus === 'Request Info') {
+                updatedStatus = 'AwaitingAssociateChairClarification'; // Or maybe 'AwaitingChairClarification' - confirm your desired status
+            }
+
             setEventProposals(currentProposals =>
                 currentProposals.map(proposal => {
                     if (proposal.id === proposalToUpdate.id) {
-                        let updatedTags = proposal.tags || [];
-                        if (newTag) {
-                            if (newTag === 'ReviewAndDone') {
-                                updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                                if (!updatedTags.includes('Done')) updatedTags.push('Done');
-                                if (!updatedTags.includes('Review')) updatedTags.push('Review');
-                            } else if (newTag === 'Done' && updatedTags.includes("Review")) {
-                                updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                                if (!updatedTags.includes('Done')) updatedTags.push('Done');
-                            } else if (newTag === 'Review' && updatedTags.includes("Done")) {
-                                if (!updatedTags.includes('Review')) updatedTags.push('Review');
-                            } else if (!updatedTags.includes(newTag)) {
-                                updatedTags.push(newTag);
-                            } else {
-                                updatedTags = updatedTags.filter(tag => tag !== newTag);
-                            }
-                        }
-                        proposal.status = newStatus; // Correct state update
-                        proposal.tags = updatedTags;  // Correct state update
-                        return proposal;
+                        return {
+                            ...proposal,
+                            status: updatedStatus,
+                            ...(clarificationMessage !== undefined ? { clarificationMessage } : {}), // Conditionally update clarificationMessage
+                        };
                     }
                     return proposal;
                 })
             );
 
             const proposalDocRef = doc(db, 'eventProposals', proposalToUpdate.id);
-            const updateData: Partial<FirestoreProposal> = { proposalStatus: newStatus };
-
-            if (newTag) {
-                const docSnap = await getDoc(proposalDocRef);
-                if (docSnap.exists()) {
-                    const currentTags = docSnap.data().tags || [];
-                    let updatedTags = [...currentTags];
-
-                    if (newTag === 'ReviewAndDone') {
-                        updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                        if (!updatedTags.includes('Done')) updatedTags.push('Done');
-                        if (!updatedTags.includes('Review')) updatedTags.push('Review');
-                    } else if (newTag === 'Done' && updatedTags.includes("Review")) {
-                        updatedTags = updatedTags.filter(tag => tag !== 'Review');
-                        if (!updatedTags.includes('Done')) updatedTags.push('Done');
-                    } else if (newTag === 'Review' && updatedTags.includes("Done")) {
-                        if (!updatedTags.includes('Review')) updatedTags.push('Review');
-                    } else if (!updatedTags.includes(newTag)) {
-                        updatedTags.push(newTag);
-                    } else {
-                        updatedTags = updatedTags.filter(tag => tag !== newTag);
-                    }
-
-                    updateData.tags = updatedTags;
-                }
-            }
-
+            const updateData: Partial<FirestoreProposal> = {
+                proposalStatus: updatedStatus,
+                ...(clarificationMessage !== undefined ? { clarificationMessage } : {}), // Conditionally update clarificationMessage
+            };
             await updateDoc(proposalDocRef, updateData);
 
-            const updatedProposal = { ...proposalToUpdate, status: newStatus, tags: updateData.tags || [] };
-
-            console.log("Data sent to API from Chairperson:", { proposal: updatedProposal, action: 'update', feedback: feedback }); // Log before API call
+            console.log("Data sent to API from Chairperson:", { proposal: { ...proposalToUpdate, status: updatedStatus, clarificationMessage }, action: 'update' });
+             console.log("Data being sent to /api/sendmail:", JSON.stringify({
+                    proposal: { ...proposalToUpdate, status: updatedStatus, clarificationMessage },
+                    action: 'update',
+                    recipientRole: newStatus === 'Request Info' ? 'AssociateChair' : (newStatus === 'Approved' ? 'Convener' : 'Convener,HOD,AssociateChair'),
+                }, null, 2));
 
             const response = await fetch('/api/sendmail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proposal: updatedProposal, action: 'update', feedback: feedback }), // Include feedback
+                body: JSON.stringify({
+                    proposal: { ...proposalToUpdate, status: updatedStatus, clarificationMessage },
+                    action: 'update',
+                    recipientRole: newStatus === 'Request Info' ? 'AssociateChair' : (newStatus === 'Approved' ? 'Convener' : 'Convener,HOD,AssociateChair'),
+                }),
             });
 
             const data = await response.json();
-
             if (!response.ok) {
                 throw new Error(`API error: ${response.status} - ${data.error || 'Unknown error'}`);
             }
-
             if (data.error) {
                 throw new Error(data.error);
             }
-            setStatusUpdateMessage(newTag
-                ? (newTag === 'ReviewAndDone'
-                    ? `Proposal status updated to Review and then marked as Done. Email sent successfully!`
-                    : `Proposal tagged as ${newTag} and email sent successfully!`)
+            setSelectedProposal(null);
+            setStatusUpdateMessage(clarificationMessage
+                ? `Sent clarification request: ${clarificationMessage}`
                 : `Proposal status updated to ${newStatus} and email sent successfully!`
             );
-
         } catch (error: unknown) {
             console.error("Error updating proposal status:", error);
             let errorMessage = "An unknown error occurred.";
@@ -597,15 +604,11 @@ export default function EventPortal() {
                 errorMessage = error.message;
             }
             setStatusUpdateMessage(`Error updating proposal status: ${errorMessage}`);
-
-            fetchProposals();
-
         } finally {
             setIsUpdatingStatus(false);
             setTimeout(() => setStatusUpdateMessage(null), 5000);
         }
-    }, [isUpdatingStatus, fetchProposals]);
-
+    }, [isUpdatingStatus, fetchProposals, userDepartments]);
 
     return (
         <DashboardContent

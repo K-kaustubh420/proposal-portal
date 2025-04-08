@@ -1,11 +1,10 @@
-// route.ts
+// api/sendmail.ts
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Initialize Nodemailer transporter (Keep your existing transporter setup)
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -14,7 +13,6 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-// Verify transporter configuration on startup (Keep your existing verification)
 transporter.verify((err: Error | null, success: boolean) => {
     if (err) {
         console.error('Transporter configuration failed:', err);
@@ -23,95 +21,203 @@ transporter.verify((err: Error | null, success: boolean) => {
     }
 });
 
+// Email mapping for the hierarchy
+const hodEmailDepartmentMap: Record<string, string> = {
+    "Ctech": "kn3959@srmist.edu.in",  // Replace with actual HOD emails
+    "Cintel": "kn3959@srmist.edu.in",
+    "Aerospace Engineering": "neupanekiran512@gmail.com",
+    "Automobile Engineering": "neupanekiran450@gmail.com",
+    "Biomedical Engineering":"namasteportraits@gmailcom",
+    "Biotechnology":"rn8638@srmist.edu.in",
+};
+
+const associateChairEmailMap: Record<string, string> = {
+
+    "Aerospace Engineering": "neupanekiran512@gmail.com",
+    "Automobile Engineering":"neupanekiran512@gmail.com",
+    "Ctech":"kn3959@srmist.edu.in",
+    "Biotechnology":"rn8638@srmist.edu.in",
+
+};
+
+const chairEmailMap: Record<string, string> = {
+    "Ctech": "chair1@example.com",        // Replace with actual Chair emails
+    "Cintel": "chair1@example.com",
+    "Department3": "chair1@example.com",
+    "Department4": "chair1@example.com",
+    "Aerospace Engineering": "neupanekiran512@gmail.com",
+    "Automobile Engineering":"neupanekiran512@gmail.com",
+    "Biomedical Engineering":"namasteportraits@gmailcom",
+    "Biotechnology":"kk6682@srmist.edu.in",
+    // ... add mappings for the Chair
+};
+
+const deanEmail = "dean.engineering@srmist.edu.in"; // Replace with the Dean's email
+
+
 export async function POST(request: Request) {
     try {
-        // Parse the request body
         const body = await request.json();
-        console.log("Received request body:", body); // ADDED LOGGING: Log the request body
-        const { proposal, action } = body;
+        console.log("Received request body:", body);
+        const { proposal, action, recipientRole, message } = body;
 
-        // Validate required fields (Keep your existing validation)
         if (!proposal || !action) {
-            console.log("Error: Proposal data and action are required"); // ADDED LOGGING
+            console.log("Error: Proposal data and action are required");
             return NextResponse.json({ error: 'Proposal data and action are required' }, { status: 400 });
         }
-
-        const requiredFields = ['id', 'title', 'organizer', 'date', 'category', 'cost', 'email', 'description', 'status'];
+        //Required fields check
+        const requiredFields = ['id', 'title', 'organizingDepartment', 'date', 'category', 'cost', 'convenerEmail', 'description', 'status', 'eventTitle', 'convenerName'];
         const missingFields = requiredFields.filter(field => !proposal.hasOwnProperty(field));
         if (missingFields.length > 0) {
-            console.log(`Error: Missing required fields: ${missingFields.join(', ')}`); // ADDED LOGGING
+            console.log(`Error: Missing required fields: ${missingFields.join(', ')}`);
             return NextResponse.json({ error: `Missing required fields: ${missingFields.join(', ')}` }, { status: 400 });
         }
-
-        // Validate status (Include 'Review' in valid statuses)
-        if (!['Approved', 'Pending', 'Rejected', 'Review'].includes(proposal.status)) { // Added 'Review'
-            console.log(`Error: Invalid status: ${proposal.status}`); // ADDED LOGGING
+        //Status validation
+        if (!['ApprovedByHOD', 'ApprovedByAssociateChair', 'ApprovedByChair','Approved','Pending', 'Rejected', 'Review','AwaitingHODClarification','AwaitingAssociateChairClarification'].includes(proposal.status)) {
+            console.log(`Error: Invalid status: ${proposal.status}`);
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
 
-        // Prepare email content based on action and status
-        let subject, emailBody;
+        // Validate status-specific fields
+        if (proposal.status === 'Rejected' && !proposal.rejectionMessage) {
+            console.log("Error: Rejection message is required for Rejected status");
+            return NextResponse.json({ error: 'Rejection message is required for Rejected status' }, { status: 400 });
+        }
+        if (proposal.status === 'Review' && !proposal.reviewMessage) {
+            console.log("Error: Review message is required for Review status");
+            return NextResponse.json({ error: 'Review message is required for Review status' }, { status: 400 });
+        }
+        if (proposal.status === 'AwaitingHODClarification' && !proposal.clarificationMessage) {
+            console.log("Error: clarification message is required for AwaitingHODClarification status");
+            return NextResponse.json({ error: 'clarification message is required for AwaitingHODClarification status' }, { status: 400 });
+        }
+        if (proposal.status === 'AwaitingAssociateChairClarification' && !proposal.clarificationMessage) {
+            console.log("Error: clarification message is required for AwaitingAssociateChairClarification status");
+            return NextResponse.json({ error: 'clarification message is required for AwaitingAssociateChairClarification status' }, { status: 400 });
+        }
+
+        console.log(`Processing action: ${action}, status: ${proposal.status}`);
+
+        let subject: string = ''; // Initialize with empty string
+        let emailBody: string = ''; // Initialize with empty string
+        let recipientEmail: string | undefined;
+
         if (action === 'submit') {
-            // ... (Your existing submit email logic - no changes needed here)
-            subject = `Proposal Submission Confirmation: ${proposal.title}`;
+            // Convener submits -> HOD
+            subject = `New Proposal Submission: ${proposal.title}`;
             emailBody = `
-                <h1>Proposal Submission Confirmation</h1>
-                <p><strong>Title:</strong> ${proposal.title}</p>
-                <p><strong>Organizer:</strong> ${proposal.organizer}</p>
-                <p><strong>Status:</strong> ${proposal.status}</p>
-                <p><strong>Submitted On:</strong> ${new Date().toLocaleString()}</p>
-                <p>Dear ${proposal.organizer},</p>
-                <p>Thank you for submitting your proposal. It is currently marked as <strong>${proposal.status}</strong> for review.</p>
-                <p>We will notify you once a decision is made. For any queries, feel free to contact support.</p>
-                <p>Best regards,<br/>Proposal System Team</p>
-            `;
-        } else if (action === 'update') {
-            subject = `Proposal Update: ${proposal.title} - Status: ${proposal.status}`; // Updated subject to include status
+            <h1>New Proposal Submission</h1>
+            <p><strong>Title:</strong> ${proposal.eventTitle}</p>
+            <p><strong>Organizing Department:</strong> ${proposal.organizingDepartment}</p>
+            <p><strong>Status:</strong> ${proposal.status}</p>
+            <p><strong>Submitted On:</strong> ${new Date().toLocaleString()}</p>
+            <p>Dear HOD,</p>
+            <p>A new proposal "${proposal.title}" has been submitted by ${proposal.convenerName} (${proposal.convenerEmail}).</p>
+            <p>Please review the proposal at your convenience.</p>
+            <p>Best regards,<br/>Proposal System Team</p>
+        `;
+            recipientEmail = hodEmailDepartmentMap[proposal.organizingDepartment];
+
+            if (!recipientEmail) {
+                console.error(`Error: No HOD email found for department: ${proposal.organizingDepartment}`);
+                return NextResponse.json({ error: `No HOD email found for department: ${proposal.organizingDepartment}` }, { status: 400 }); // Or 500, depending on how you want to handle it
+            }
+
+        }
+        else if (action === 'update') {
+            subject = `Proposal Update: ${proposal.title} - Status: ${proposal.status}`;
+            // Construct the common part of the email body.
             emailBody = `
                 <h1>Proposal Status Update</h1>
                 <p><strong>Title:</strong> ${proposal.title}</p>
-                <p><strong>Organizer:</strong> ${proposal.organizer}</p>
+                <p><strong>Organizing Department:</strong> ${proposal.organizingDepartment}</p>
                 <p><strong>Status:</strong> ${proposal.status}</p>
                 <p><strong>Updated On:</strong> ${new Date().toLocaleString()}</p>
-                <p>Dear ${proposal.organizer},</p>
-                <p>Your proposal status has been updated to <strong>${proposal.status}</strong>.</p>
-                ${proposal.status === 'Approved' ? '<p>Congratulations! Your proposal has been approved. Please proceed with the next steps.</p>' : ''}
-                ${proposal.status === 'Rejected' ? '<p>We regret to inform you that your proposal was not accepted.</p>' : ''}
-                ${proposal.status === 'Rejected' && proposal.rejectionMessage ? `<p><strong>Reason for Rejection:</strong> ${proposal.rejectionMessage}</p>` : ''}  
-                ${proposal.status === 'Review' ? '<p>Your proposal is currently under review.</p>' : ''}
-                ${proposal.status === 'Review' && proposal.reviewMessage ? `<p><strong>Review Comments:</strong> ${proposal.reviewMessage}</p>` : ''} 
-                <p>We will notify you of further updates as necessary. For any queries, feel free to contact support.</p>
-                <p>Best regards,<br/>Proposal System Team</p>
+                <p>Dear ${recipientRole ==='Convener,HOD,AssociateChair'?'All': recipientRole},</p>
+                <p>The proposal "${proposal.title}" status has been updated to <strong>${proposal.status}</strong>.</p>
             `;
-        } else {
-            console.log(`Error: Invalid action: ${action}`); // ADDED LOGGING
-            return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+
+            if (recipientRole === 'AssociateChair') {
+                recipientEmail = associateChairEmailMap[proposal.organizingDepartment];
+            } else if (recipientRole === 'Chair') {
+                recipientEmail = chairEmailMap[proposal.organizingDepartment];
+            } else if (recipientRole === 'Dean') {
+                recipientEmail = deanEmail;
+            } else if (recipientRole === 'Convener') {
+                recipientEmail = proposal.convenerEmail;
+            }else if (recipientRole === 'HOD') {
+                recipientEmail = hodEmailDepartmentMap[proposal.organizingDepartment]; //for clarification
+            }
+            // Handle combined roles (Convener, AssociateChair, HOD):
+            else if (recipientRole === 'Convener,AssociateChair') {
+                recipientEmail = `${proposal.convenerEmail}, ${associateChairEmailMap[proposal.organizingDepartment]}`;
+
+            }
+            else if (recipientRole === 'Convener,HOD,AssociateChair'){
+                recipientEmail = `${proposal.convenerEmail}, ${associateChairEmailMap[proposal.organizingDepartment]}, ${hodEmailDepartmentMap[proposal.organizingDepartment]}`;
+            }
+
+            if (!recipientEmail) {
+                console.error(`Error: No email found for role: ${recipientRole}, department: ${proposal.organizingDepartment}`);
+                return NextResponse.json({ error: `No email found for role: ${recipientRole}, department: ${proposal.organizingDepartment}` }, { status: 400 });
+            }
+            if (proposal.status === 'ApprovedByHOD') {
+                emailBody += `<p>The HOD has approved the proposal. It is now awaiting review by the Associate Chair.</p>`;
+
+            }
+            else if(proposal.status === 'ApprovedByAssociateChair'){
+                emailBody += `<p>The Associate Chair has approved the proposal. It is now awaiting review by the  Chair.</p>`;
+
+            }
+
+            else if (proposal.status === 'Approved') {
+                emailBody += `<p>The Chair has approved the proposal. It is now forwarded to the Dean.</p>`;
+            }
+            else if (proposal.status === 'Review') {
+                emailBody += `<p><strong>Review Comments:</strong> ${message}</p><p>Please review the comments and resubmit the proposal.</p>`;
+            }
+            else if (proposal.status === 'Approved') { // Handle 'Approved' status for convener email
+                emailBody = `
+                    <h1>Congratulations! Your Proposal has been Approved</h1>
+                    <p><strong>Title:</strong> ${proposal.eventTitle}</p>
+                    <p><strong>Organizing Department:</strong> ${proposal.organizingDepartment}</p>
+                    <p><strong>Status:</strong> ${proposal.status} - Approved</p> <p>Dear Convener,</p><p>We are pleased to inform you that your proposal "${proposal.title}" has been <strong>approved</strong>.</p> <p>Best regards,<br/>Proposal System Team</p>`;
+            }
+            else if (proposal.status === 'AwaitingHODClarification') {
+                emailBody += `<p><strong>Clarification Requested:</strong> ${message}</p><p>Please provide the requested clarification.</p>`;
+            }
+            else if (proposal.status === 'AwaitingAssociateChairClarification') {
+                emailBody += `<p><strong>Clarification Requested:</strong> ${message}</p><p>Please provide the requested clarification.</p>`;
+
+            }
+            else if (proposal.status === 'Rejected') {
+                emailBody += `<p><strong>Reason for Rejection:</strong> ${message}</p><p>The proposal has been rejected.</p>`;
+            }
+
+            emailBody += `<p>Best regards,<br/>Proposal System Team</p>`;
         }
 
-        // Append optional fields if present (Keep your existing optional field logic)
-        emailBody += proposal.sponsorshipType ? `<p><strong>Sponsorship Type:</strong> ${proposal.sponsorshipType}</p>` : '';
-        emailBody += proposal.associatingAgencies ? `<p><strong>Agencies:</strong> ${Array.isArray(proposal.associatingAgencies) ? proposal.associatingAgencies.join(', ') : String(proposal.associatingAgencies)}</p>` : '';
 
-        const mailOptions = { // ADDED: Log mailOptions before sending
+        const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: proposal.email,
+            to: recipientEmail,  // This is now dynamically set
             subject,
             html: emailBody,
         };
-        console.log("Mail Options:", mailOptions); // ADDED LOGGING: Log mailOptions
 
-        // Send the email (Keep your existing sendMail logic)
-        await transporter.sendMail(mailOptions);
-        console.log("Email sent successfully"); // ADDED LOGGING
+        console.log("Mail Options:", mailOptions);
+
+        await transporter.sendMail(mailOptions); //  Send Email
+        console.log("Email sent successfully");
 
         return NextResponse.json({
-            message: `${action === 'submit' ? 'Proposal submitted' : 'Proposal updated'} and email sent successfully`,
-            proposal,
+            message: `Proposal ${action === 'submit' ? 'submitted' : 'updated'} and email sent successfully`,
+            proposal, // Good practice to return the updated proposal
         }, { status: 200 });
+
     } catch (error) {
-        console.error('Error processing request:', error); // Existing error log
-        console.error('Detailed error:', error); // ADDED LOGGING: Log the full error object
+        console.error('Error processing request:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: 'Internal server error', details: errorMessage }, { status: 500 }); // Include error details in response
+        return NextResponse.json({ error: 'Internal server error', details: errorMessage }, { status: 500 });
     }
-}
+} 

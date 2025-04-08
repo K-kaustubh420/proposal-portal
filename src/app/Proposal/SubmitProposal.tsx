@@ -49,7 +49,7 @@ const participantCategories = [
     "FA's",
     "Faculties Only",
     "International Students",
-    "International People",
+    "International Participants",
     "Students (Category)",
 ];
 
@@ -913,7 +913,8 @@ export default function EventProposalForm() {
                                             <thead className="bg-blue-50">
                                                 <tr className="text-left">
                                                     <th className="px-4 py-2">S.No</th>
-                                                    <th className="px-4 py-2">Description</th>
+                                                    <th className="px-4 py-2">Catogery <span className='ml-20'>Sub Catogery</span><span className='ml-16'>Location Type</span></th>
+                                                   
                                                     <th className="px-4 py-2">Quantity</th>
                                                     <th className="px-4 py-2">Cost/Unit (₹)</th>
                                                     <th className="px-4 py-2">Total Amount (₹)</th>
@@ -1022,7 +1023,7 @@ export default function EventProposalForm() {
 
                                                                 <div className="w-1/3 pl-2">
                                                                     <div role="group" aria-labelledby={`location-type-label-${row.id}`}>
-                                                                        <span id={`location-type-label-${row.id}`} className="block text-gray-700 text-sm font-semibold mb-1">Location Type</span>
+                                                                        <span id={`location-type-label-${row.id}`} className="block text-gray-700 text-sm font-semibold mb-1"></span>
                                                                         <label className="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-black transition mb-2">
                                                                             <input
                                                                                 type="radio"

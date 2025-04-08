@@ -220,9 +220,9 @@ const ViewBills: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
-                                    </th>
+                                    </th> */}
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Title
                                     </th>
@@ -257,7 +257,7 @@ const ViewBills: React.FC = () => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        {/* <td className="px-6 py-4 whitespace-nowrap">
                                             <span
                                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bill.status === "Approved"
                                                     ? "bg-green-100 text-green-800"
@@ -268,7 +268,7 @@ const ViewBills: React.FC = () => {
                                             >
                                                 {bill.status}
                                             </span>
-                                        </td>
+                                        </td> */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">
                                                 {bill.title}
